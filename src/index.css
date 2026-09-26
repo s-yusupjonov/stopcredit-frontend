@@ -1,0 +1,41 @@
+:root {
+  --color-primary: #00a73e;
+  --color-primary-soft: rgba(0, 167, 62, 0.08);
+  --color-primary-hover: rgba(0, 167, 62, 0.85);
+  --color-danger: #e5484d;
+  --color-warning: #f5a623;
+  --color-success: #00a73e;
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-border: #eaecef;
+  --color-text: #1f2430;
+  --color-text-muted: #6b7280;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ant-table-tbody > tr > td {
+  cursor: default;
+}
