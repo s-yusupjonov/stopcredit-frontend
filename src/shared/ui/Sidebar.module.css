@@ -64,3 +64,45 @@
 .navItemActive:hover {
   color: var(--color-primary);
 }
+
+.groupHeader {
+  width: 100%;
+  background: transparent;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.groupHeaderActive {
+  color: var(--color-primary);
+}
+
+.groupLabel {
+  flex: 1;
+}
+
+.chevron {
+  font-size: 11px;
+  transition: transform 0.15s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.subNav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 4px 18px;
+  padding-left: 8px;
+  border-left: 1px solid var(--color-border);
+}
+
+.subItem {
+  padding: 8px 12px;
+  font-size: 13px;
+}

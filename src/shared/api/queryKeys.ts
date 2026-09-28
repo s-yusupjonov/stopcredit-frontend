@@ -1,4 +1,4 @@
-import type { CreditsFilters } from './types';
+import type { CardsFilters, CreditsFilters } from './types';
 
 export const queryKeys = {
   credits: {
@@ -8,5 +8,13 @@ export const queryKeys = {
   },
   users: {
     all: ['users'] as const,
+  },
+  cards: {
+    all: ['cards'] as const,
+    list: (filters: CardsFilters) => ['cards', 'list', filters] as const,
+    detail: (id: number) => ['cards', 'detail', id] as const,
+  },
+  executors: {
+    all: ['executors'] as const,
   },
 };
