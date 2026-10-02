@@ -126,3 +126,73 @@ export interface CreditsFilters {
   size?: number;
   sort?: string;
 }
+
+export type CardStatus = 'ACTIVE' | 'BLOCKED';
+export type CardRestrictionType = 'FULL' | 'PARTIAL';
+export type CardBasisCategory = 'CENTRAL_BANK' | 'INTERNAL_AFFAIRS' | 'OTHER';
+
+export interface ExecutorResponse {
+  id: number;
+  name: string;
+  phone: string;
+  extension: string;
+}
+
+export interface ExecutorRequest {
+  name: string;
+  phone?: string;
+  extension?: string;
+}
+
+export interface CardDocumentResponse {
+  id: number;
+  fileName: string;
+  sizeBytes: number;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+export interface CardResponse {
+  id: number;
+  cardNumber: string;
+  mfo: string | null;
+  restrictionDate: string | null;
+  balance: number | null;
+  restrictionType: CardRestrictionType | null;
+  basisCategory: CardBasisCategory;
+  basisComment: string | null;
+  status: CardStatus;
+  statusComment: string | null;
+  executor: ExecutorResponse;
+  senderName: string;
+  createdAt: string;
+  updatedAt: string;
+  documents: CardDocumentResponse[] | null;
+}
+
+export interface CardRequest {
+  cardNumber: string;
+  mfo?: string;
+  restrictionDate?: string;
+  balance?: number;
+  restrictionType?: CardRestrictionType;
+  basisCategory: CardBasisCategory;
+  basisComment?: string;
+  status: CardStatus;
+  statusComment?: string;
+  executorId: number;
+}
+
+export interface CardsFilters {
+  q?: string;
+  status?: CardStatus;
+  mfo?: string;
+  restrictionType?: CardRestrictionType;
+  basisCategory?: CardBasisCategory;
+  executorId?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+}

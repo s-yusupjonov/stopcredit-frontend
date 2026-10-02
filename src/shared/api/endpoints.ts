@@ -1,11 +1,17 @@
 import { api } from './axios';
 import type {
   AdLookupResponse,
+  CardDocumentResponse,
+  CardRequest,
+  CardResponse,
+  CardsFilters,
   CreditRequest,
   CreditResponse,
   CreditsFilters,
   CreditStatus,
   DocumentResponse,
+  ExecutorRequest,
+  ExecutorResponse,
   LoginRequest,
   LoginResponse,
   Page,
@@ -83,4 +89,59 @@ export const creditsApi = {
       .then((r) => r.data as Blob),
   deleteDocument: (creditId: number, docId: number) =>
     api.delete(`/credits/${creditId}/documents/${docId}`),
+};
+
+function buildCardsParams(filters: CardsFilters) {
+  const params: Record<string, string | number> = {};
+  if (filters.q) params.q = filters.q;
+  if (filters.status) params.status = filters.status;
+  if (filters.mfo) params.mfo = filters.mfo;
+  if (filters.restrictionType) params.restrictionType = filters.restrictionType;
+  if (filters.basisCategory) params.basisCategory = filters.basisCategory;
+  if (filters.executorId !== undefined) params.executorId = filters.executorId;
+  if (filters.dateFrom) params.dateFrom = filters.dateFrom;
+  if (filters.dateTo) params.dateTo = filters.dateTo;
+  if (filters.page !== undefined) params.page = filters.page;
+  if (filters.size !== undefined) params.size = filters.size;
+  if (filters.sort) params.sort = filters.sort;
+  return params;
+}
+
+export const executorsApi = {
+  list: () => api.get<ExecutorResponse[]>('/executors').then((r) => r.data),
+  create: (payload: ExecutorRequest) =>
+    api.post<ExecutorResponse>('/executors', payload).then((r) => r.data),
+};
+
+export const cardsApi = {
+  list: (filters: CardsFilters) =>
+    api.get<Page<CardResponse>>('/cards', { params: buildCardsParams(filters) }).then((r) => r.data),
+  export: (filters: CardsFilters) =>
+    api
+      .get('/cards/export', { params: buildCardsParams(filters), responseType: 'blob' })
+      .then((r) => r.data as Blob),
+  get: (id: number) => api.get<CardResponse>(`/cards/${id}`).then((r) => r.data),
+  create: (payload: CardRequest) => api.post<CardResponse>('/cards', payload).then((r) => r.data),
+  update: (id: number, payload: CardRequest) =>
+    api.put<CardResponse>(`/cards/${id}`, payload).then((r) => r.data),
+  uploadDocuments: (id: number, files: File[], onProgress?: (percent: number) => void) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    return api
+      .post<CardDocumentResponse[]>(`/cards/${id}/documents`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (evt) => {
+          if (onProgress && evt.total) {
+            onProgress(Math.round((evt.loaded / evt.total) * 100));
+          }
+        },
+      })
+      .then((r) => r.data);
+  },
+  downloadDocument: (cardId: number, docId: number) =>
+    api
+      .get(`/cards/${cardId}/documents/${docId}`, { responseType: 'blob' })
+      .then((r) => r.data as Blob),
+  deleteDocument: (cardId: number, docId: number) =>
+    api.delete(`/cards/${cardId}/documents/${docId}`),
 };

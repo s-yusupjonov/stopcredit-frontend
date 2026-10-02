@@ -139,7 +139,7 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
     >
       <Form layout="vertical">
         {isCreate && (
-          <Form.Item label="Manba">
+          <Form.Item label="Baza">
             <Controller
               name="authSource"
               control={control}

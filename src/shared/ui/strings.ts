@@ -1,4 +1,12 @@
-import type { CreditStage, CreditStatus, CreditType, Role } from '@/shared/api/types';
+import type {
+  CardBasisCategory,
+  CardRestrictionType,
+  CardStatus,
+  CreditStage,
+  CreditStatus,
+  CreditType,
+  Role,
+} from '@/shared/api/types';
 
 export const stageLabels: Record<CreditStage, string> = {
   ANTI_FRAUD: 'Anti-fraud',
@@ -35,3 +43,19 @@ export const stageOrder: CreditStage[] = [
   'UNDERWRITING',
   'COMPLETED',
 ];
+
+export const cardStatusLabels: Record<CardStatus, string> = {
+  ACTIVE: 'Aktiv',
+  BLOCKED: 'Bloklangan',
+};
+
+export const cardRestrictionLabels: Record<CardRestrictionType, string> = {
+  FULL: "To'liq",
+  PARTIAL: 'Qisman',
+};
+
+export const cardBasisLabels: Record<CardBasisCategory, string> = {
+  CENTRAL_BANK: 'Markaziy Bank',
+  INTERNAL_AFFAIRS: 'Ichki Ishlar Vazirligi',
+  OTHER: 'Boshqa',
+};

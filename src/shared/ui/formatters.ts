@@ -48,3 +48,13 @@ export function formatOverdueTime(deadline: string | null): string {
   const minutes = diffMinutes % 60;
   return `${hours} soat ${minutes} daqiqa`;
 }
+
+export function formatCardNumber(value: string): string {
+  return value.replace(/(\d{4})(?=\d)/g, '$1 ');
+}
+
+export function formatExecutor(executor: { name: string; phone: string; extension: string }): string {
+  const phone = executor.phone ? ` ${executor.phone}` : '';
+  const extension = executor.extension ? ` (${executor.extension})` : '';
+  return `${executor.name}${phone}${extension}`;
+}

@@ -43,7 +43,7 @@ export function UsersPage() {
       ),
     },
     {
-      title: 'Manba',
+      title: 'Baza',
       dataIndex: 'authSource',
       key: 'authSource',
       render: (v: 'LOCAL' | 'AD', record) => (
