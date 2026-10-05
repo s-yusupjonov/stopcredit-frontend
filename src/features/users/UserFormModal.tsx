@@ -163,6 +163,7 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
 
         <Form.Item
           label="Login"
+          required
           validateStatus={errors.username ? 'error' : ''}
           help={errors.username?.message}
         >
@@ -216,6 +217,7 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
 
         <Form.Item
           label="F.I.Sh."
+          required
           validateStatus={errors.fullName ? 'error' : ''}
           help={errors.fullName?.message}
         >
@@ -230,6 +232,7 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
 
         <Form.Item
           label="Rol"
+          required
           validateStatus={errors.role ? 'error' : ''}
           help={errors.role?.message}
         >
@@ -248,6 +251,7 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
         {(!isCreate ? editingUser?.authSource !== 'AD' : authSource === 'LOCAL') && (
           <Form.Item
             label={editingUser ? "Parol (o'zgartirmaslik uchun bo'sh qoldiring)" : 'Parol'}
+            required={isCreate}
             validateStatus={errors.password ? 'error' : ''}
             help={errors.password?.message}
           >
