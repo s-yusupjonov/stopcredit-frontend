@@ -9,7 +9,6 @@ import {
   DatePicker,
   Form,
   Input,
-  InputNumber,
   Select,
   Typography,
   Upload,
@@ -19,6 +18,7 @@ import {
 import type { UploadFile, UploadProps } from 'antd';
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { cardBasisLabels, cardRestrictionLabels, cardStatusLabels } from '@/shared/ui/strings';
+import { MoneyInput } from '@/shared/ui/MoneyInput';
 import { formatCardNumber, formatExecutor } from '@/shared/ui/formatters';
 import { handleFormError, notifyError } from '@/shared/api/errorHandler';
 import { cardsApi } from '@/shared/api/endpoints';
@@ -161,6 +161,7 @@ export function CardFormPage() {
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item
               label="Karta raqami"
+              required
               style={{ flex: 2 }}
               validateStatus={errors.cardNumber ? 'error' : ''}
               help={errors.cardNumber?.message}
@@ -222,15 +223,7 @@ export function CardFormPage() {
               <Controller
                 name="balance"
                 control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    style={{ width: '100%' }}
-                    precision={2}
-                    step={1000}
-                    value={field.value ?? null}
-                    onChange={(value) => field.onChange(value)}
-                  />
-                )}
+                render={({ field }) => <MoneyInput {...field} />}
               />
             </Form.Item>
             <Form.Item
@@ -260,6 +253,7 @@ export function CardFormPage() {
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item
               label="Asos"
+              required
               style={{ flex: 1 }}
               validateStatus={errors.basisCategory ? 'error' : ''}
               help={errors.basisCategory?.message}
@@ -298,6 +292,7 @@ export function CardFormPage() {
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item
               label="Status"
+              required
               style={{ flex: 1 }}
               validateStatus={errors.status ? 'error' : ''}
               help={errors.status?.message}
@@ -334,6 +329,7 @@ export function CardFormPage() {
 
           <Form.Item
             label="Ijrochi"
+            required
             validateStatus={errors.executorId ? 'error' : ''}
             help={errors.executorId?.message}
           >

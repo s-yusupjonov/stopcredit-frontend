@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, Form, Input, InputNumber, Select, Typography } from 'antd';
+import { Button, Card, Form, Input, Select, Typography } from 'antd';
 import { typeLabels, statusLabels } from '@/shared/ui/strings';
+import { MoneyInput } from '@/shared/ui/MoneyInput';
 import { handleFormError } from '@/shared/api/errorHandler';
 import { useCredit } from './hooks/useCredit';
 import { useCreateCredit } from './hooks/useCreateCredit';
@@ -36,7 +37,6 @@ export function CreditFormPage() {
       type: 'ONLINE',
       mfo: '',
       applicationNumber: '',
-      amount: 0,
       status: 'ACTIVE',
     },
   });
@@ -89,6 +89,7 @@ export function CreditFormPage() {
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item
               label="Familiya"
+              required
               style={{ flex: 1 }}
               validateStatus={errors.lastName ? 'error' : ''}
               help={errors.lastName?.message}
@@ -101,6 +102,7 @@ export function CreditFormPage() {
             </Form.Item>
             <Form.Item
               label="Ism"
+              required
               style={{ flex: 1 }}
               validateStatus={errors.firstName ? 'error' : ''}
               help={errors.firstName?.message}
@@ -127,6 +129,7 @@ export function CreditFormPage() {
 
           <Form.Item
             label="PINFL"
+            required
             validateStatus={errors.pinfl ? 'error' : ''}
             help={errors.pinfl?.message}
           >
@@ -140,6 +143,7 @@ export function CreditFormPage() {
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item
               label="Kredit turi"
+              required
               style={{ flex: 1 }}
               validateStatus={errors.type ? 'error' : ''}
               help={errors.type?.message}
@@ -160,6 +164,7 @@ export function CreditFormPage() {
             </Form.Item>
             <Form.Item
               label="MFO"
+              required
               style={{ flex: 1 }}
               validateStatus={errors.mfo ? 'error' : ''}
               help={errors.mfo?.message}
@@ -175,6 +180,7 @@ export function CreditFormPage() {
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item
               label="Ariza raqami"
+              required
               style={{ flex: 1 }}
               validateStatus={errors.applicationNumber ? 'error' : ''}
               help={errors.applicationNumber?.message}
@@ -187,6 +193,7 @@ export function CreditFormPage() {
             </Form.Item>
             <Form.Item
               label="Summa"
+              required
               style={{ flex: 1 }}
               validateStatus={errors.amount ? 'error' : ''}
               help={errors.amount?.message}
@@ -194,21 +201,14 @@ export function CreditFormPage() {
               <Controller
                 name="amount"
                 control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    {...field}
-                    style={{ width: '100%' }}
-                    min={0}
-                    precision={2}
-                    step={1000}
-                  />
-                )}
+                render={({ field }) => <MoneyInput {...field} min={0} />}
               />
             </Form.Item>
           </div>
 
           <Form.Item
             label="Status"
+            required
             validateStatus={errors.status ? 'error' : ''}
             help={errors.status?.message}
           >
