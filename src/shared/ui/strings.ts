@@ -1,5 +1,6 @@
 import type {
   CardBasisCategory,
+  CardDocumentKind,
   CardRestrictionType,
   CardStatus,
   CreditStage,
@@ -58,4 +59,9 @@ export const cardBasisLabels: Record<CardBasisCategory, string> = {
   CENTRAL_BANK: 'Markaziy Bank',
   INTERNAL_AFFAIRS: 'Ichki Ishlar Vazirligi',
   OTHER: 'Boshqa',
+};
+
+export const cardDocumentKindLabels: Record<CardDocumentKind, string> = {
+  RESTRICTION: 'Cheklov hujjati',
+  UNBLOCK: 'Blokdan ochish buyrug\'i',
 };

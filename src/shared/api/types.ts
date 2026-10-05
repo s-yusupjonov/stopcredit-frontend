@@ -130,6 +130,7 @@ export interface CreditsFilters {
 export type CardStatus = 'ACTIVE' | 'BLOCKED';
 export type CardRestrictionType = 'FULL' | 'PARTIAL';
 export type CardBasisCategory = 'CENTRAL_BANK' | 'INTERNAL_AFFAIRS' | 'OTHER';
+export type CardDocumentKind = 'RESTRICTION' | 'UNBLOCK';
 
 export interface ExecutorResponse {
   id: number;
@@ -148,6 +149,7 @@ export interface CardDocumentResponse {
   id: number;
   fileName: string;
   sizeBytes: number;
+  kind: CardDocumentKind;
   uploadedBy: string;
   uploadedAt: string;
 }
@@ -167,7 +169,17 @@ export interface CardResponse {
   senderName: string;
   createdAt: string;
   updatedAt: string;
+  unblockOrderNumber?: string | null;
+  unblockComment?: string | null;
+  unblockedAt?: string | null;
+  unblockedBy?: string | null;
   documents: CardDocumentResponse[] | null;
+}
+
+export interface CardUnblockPayload {
+  orderNumber: string;
+  comment?: string;
+  file: File;
 }
 
 export interface CardRequest {

@@ -19,3 +19,11 @@ export const cardSchema = z.object({
 });
 
 export type CardFormValues = z.infer<typeof cardSchema>;
+
+export const unblockSchema = z.object({
+  orderNumber: z.string().trim().min(1, 'Majburiy maydon').max(500, 'Ko\'pi bilan 500 ta belgi'),
+  comment: z.string().max(500, 'Ko\'pi bilan 500 ta belgi').optional().or(z.literal('')),
+  file: z.instanceof(File, { message: 'Buyruq faylini yuklang' }),
+});
+
+export type UnblockFormValues = z.infer<typeof unblockSchema>;

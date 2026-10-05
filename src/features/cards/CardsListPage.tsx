@@ -1,9 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Button, Card, DatePicker, Input, Select, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Card, DatePicker, Select, Table, Tag, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, DownloadOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  DownloadOutlined,
+  SearchOutlined,
+  ClearOutlined,
+  UnlockOutlined,
+} from '@ant-design/icons';
 import type {
   CardBasisCategory,
   CardResponse,
@@ -12,6 +18,7 @@ import type {
   ExecutorResponse,
 } from '@/shared/api/types';
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import {
   formatCardNumber,
   formatDate,
@@ -24,6 +31,7 @@ import { useAuth } from '@/features/auth/useAuth';
 import { useCards } from './hooks/useCards';
 import { useExecutors } from './hooks/useExecutors';
 import { useExportCards } from './hooks/useExportCards';
+import { UnblockCardModal } from './UnblockCardModal';
 
 const PAGE_SIZE = 10;
 
@@ -71,6 +79,7 @@ export function CardsListPage({ status }: CardsListPageProps) {
   const meta = pageMeta[status];
   const exportMutation = useExportCards(meta.fileLabel);
   const { data: executors = [], isLoading: isLoadingExecutors } = useExecutors();
+  const [unblockTarget, setUnblockTarget] = useState<CardResponse | null>(null);
 
   const filters = useMemo(() => {
     const executorId = searchParams.get('executorId');
@@ -110,7 +119,7 @@ export function CardsListPage({ status }: CardsListPageProps) {
     setSearchParams(next);
   }
 
-  const columns: ColumnsType<CardResponse> = [
+  const baseColumns: ColumnsType<CardResponse> = [
     { title: 'T/r', dataIndex: 'id', key: 'id', width: 80 },
     {
       title: 'Karta raqami',
@@ -129,7 +138,7 @@ export function CardsListPage({ status }: CardsListPageProps) {
       title: 'Karta balansi',
       dataIndex: 'balance',
       key: 'balance',
-      render: (v: number | null) => (v === null ? '—' : formatMoney(v)),
+      render: (v: number | null | undefined) => (typeof v === 'number' ? formatMoney(v) : '—'),
     },
     {
       title: 'Cheklov turi',
@@ -172,6 +181,49 @@ export function CardsListPage({ status }: CardsListPageProps) {
     },
   ];
 
+  const unblockInfoColumns: ColumnsType<CardResponse> = [
+    {
+      title: 'Ochish buyruqi',
+      dataIndex: 'unblockOrderNumber',
+      key: 'unblockOrderNumber',
+      width: 220,
+      render: (v: string | null | undefined) => <TruncatedText value={v ?? null} />,
+    },
+    {
+      title: 'Ochilgan sana',
+      dataIndex: 'unblockedAt',
+      key: 'unblockedAt',
+      render: (v: string | null | undefined) => formatDate(v),
+    },
+  ];
+
+  const actionColumns: ColumnsType<CardResponse> = [
+    {
+      title: '',
+      key: 'actions',
+      fixed: 'right',
+      render: (_, record) => (
+        <Button
+          size="small"
+          icon={<UnlockOutlined />}
+          onClick={(event) => {
+            event.stopPropagation();
+            setUnblockTarget(record);
+          }}
+        >
+          Blokdan ochish
+        </Button>
+      ),
+    },
+  ];
+
+  const canUnblock = role === 'ANTI_FRAUD' && status === 'BLOCKED';
+  const columns: ColumnsType<CardResponse> = [
+    ...baseColumns,
+    ...(status === 'ACTIVE' ? unblockInfoColumns : []),
+    ...(canUnblock ? actionColumns : []),
+  ];
+
   return (
     <div>
       <div
@@ -206,23 +258,19 @@ export function CardsListPage({ status }: CardsListPageProps) {
 
       <Card styles={{ body: { padding: 20 } }} style={{ borderRadius: 12, marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Input
-            allowClear
+          <SearchInput
             prefix={<SearchOutlined />}
             placeholder="Karta raqami, ijrochi, yuboruvchi yoki buyruq"
-            defaultValue={filters.q}
+            value={filters.q}
             style={{ width: 320 }}
-            onPressEnter={(e) => updateParams({ q: e.currentTarget.value.trim() })}
-            onClear={() => updateParams({ q: undefined })}
+            onSearch={(value) => updateParams({ q: value })}
           />
-          <Input
-            allowClear
+          <SearchInput
             placeholder="MFO"
-            defaultValue={filters.mfo}
+            value={filters.mfo}
             style={{ width: 110 }}
             maxLength={10}
-            onPressEnter={(e) => updateParams({ mfo: e.currentTarget.value.trim() })}
-            onClear={() => updateParams({ mfo: undefined })}
+            onSearch={(value) => updateParams({ mfo: value })}
           />
           <Select
             allowClear
@@ -295,6 +343,8 @@ export function CardsListPage({ status }: CardsListPageProps) {
           }}
         />
       </Card>
+
+      <UnblockCardModal card={unblockTarget} onClose={() => setUnblockTarget(null)} />
     </div>
   );
 }

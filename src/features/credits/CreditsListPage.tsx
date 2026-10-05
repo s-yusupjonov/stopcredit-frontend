@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Card, Input, Select, Switch, Table, Tooltip, Typography } from 'antd';
+import { Button, Card, Select, Switch, Table, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   PlusOutlined,
@@ -15,6 +15,7 @@ import type { CreditResponse, CreditStage, CreditStatus, CreditType } from '@/sh
 import { StatusTag } from '@/shared/ui/StatusTag';
 import { StageTag } from '@/shared/ui/StageTag';
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { SearchInput } from '@/shared/ui/SearchInput';
 import { formatMoney, formatDate, formatRemainingTime, formatOverdueTime } from '@/shared/ui/formatters';
 import { stageLabels, statusLabels, typeLabels } from '@/shared/ui/strings';
 import { colors } from '@/shared/theme';
@@ -74,7 +75,9 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
     } else {
       next.set(key, value);
     }
-    next.delete('page');
+    if (key !== 'page') {
+      next.delete('page');
+    }
     setSearchParams(next);
   }
 
@@ -204,14 +207,12 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
 
       <Card styles={{ body: { padding: 20 } }} style={{ borderRadius: 12, marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Input
-            allowClear
+          <SearchInput
             prefix={<SearchOutlined />}
             placeholder="F.I.Sh, PINFL yoki ariza raqami"
-            defaultValue={filters.q}
+            value={filters.q}
             style={{ width: 260 }}
-            onPressEnter={(e) => updateParam('q', e.currentTarget.value)}
-            onClear={() => updateParam('q', undefined)}
+            onSearch={(value) => updateParam('q', value)}
           />
           <Select
             allowClear

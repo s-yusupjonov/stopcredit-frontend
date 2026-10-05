@@ -4,6 +4,7 @@ import type {
   CardDocumentResponse,
   CardRequest,
   CardResponse,
+  CardUnblockPayload,
   CardsFilters,
   CreditRequest,
   CreditResponse,
@@ -124,6 +125,19 @@ export const cardsApi = {
   create: (payload: CardRequest) => api.post<CardResponse>('/cards', payload).then((r) => r.data),
   update: (id: number, payload: CardRequest) =>
     api.put<CardResponse>(`/cards/${id}`, payload).then((r) => r.data),
+  unblock: (id: number, payload: CardUnblockPayload) => {
+    const formData = new FormData();
+    formData.append('orderNumber', payload.orderNumber);
+    if (payload.comment) {
+      formData.append('comment', payload.comment);
+    }
+    formData.append('files', payload.file);
+    return api
+      .post<CardResponse>(`/cards/${id}/unblock`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data);
+  },
   uploadDocuments: (id: number, files: File[], onProgress?: (percent: number) => void) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
