@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Button, Card, DatePicker, Select, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Card, DatePicker, Select, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   PlusOutlined,
@@ -14,12 +14,15 @@ import type {
   CardBasisCategory,
   CardResponse,
   CardRestrictionType,
+  CardsFilters,
   CardStatus,
   ExecutorResponse,
 } from '@/shared/api/types';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { SearchInput } from '@/shared/ui/SearchInput';
 import { QueryErrorState } from '@/shared/ui/QueryErrorState';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { readEnum, readIsoDate, readPage, readPositiveInt, readText } from '@/shared/ui/searchParams';
 import {
   formatCardNumber,
   formatDate,
@@ -35,6 +38,9 @@ import { useExportCards } from './hooks/useExportCards';
 import { UnblockCardModal } from './UnblockCardModal';
 
 const PAGE_SIZE = 10;
+const RESTRICTION_TYPES = Object.keys(cardRestrictionLabels) as CardRestrictionType[];
+const BASIS_CATEGORIES = Object.keys(cardBasisLabels) as CardBasisCategory[];
+const FILTER_KEYS = ['q', 'mfo', 'restrictionType', 'basisCategory', 'executorId', 'dateFrom', 'dateTo'];
 
 interface CardsListPageProps {
   status: CardStatus;
@@ -73,6 +79,9 @@ const pageMeta: Record<CardStatus, { title: string; subtitle: string; fileLabel:
   },
 };
 
+const toOptions = (labels: Record<string, string>) =>
+  Object.entries(labels).map(([value, label]) => ({ value, label }));
+
 export function CardsListPage({ status }: CardsListPageProps) {
   const navigate = useNavigate();
   const { role } = useAuth();
@@ -82,33 +91,40 @@ export function CardsListPage({ status }: CardsListPageProps) {
   const { data: executors = [], isLoading: isLoadingExecutors } = useExecutors();
   const [unblockTarget, setUnblockTarget] = useState<CardResponse | null>(null);
 
-  const filters = useMemo(() => {
-    const executorId = searchParams.get('executorId');
-    return {
-      q: searchParams.get('q') ?? undefined,
+  const filters = useMemo<CardsFilters>(
+    () => ({
+      q: readText(searchParams, 'q'),
       status,
-      mfo: searchParams.get('mfo') ?? undefined,
-      restrictionType: (searchParams.get('restrictionType') as CardRestrictionType | null) ?? undefined,
-      basisCategory: (searchParams.get('basisCategory') as CardBasisCategory | null) ?? undefined,
-      executorId: executorId ? Number(executorId) : undefined,
-      dateFrom: searchParams.get('dateFrom') ?? undefined,
-      dateTo: searchParams.get('dateTo') ?? undefined,
-      page: Number(searchParams.get('page') ?? '0'),
+      mfo: readText(searchParams, 'mfo'),
+      restrictionType: readEnum(searchParams, 'restrictionType', RESTRICTION_TYPES),
+      basisCategory: readEnum(searchParams, 'basisCategory', BASIS_CATEGORIES),
+      executorId: readPositiveInt(searchParams, 'executorId'),
+      dateFrom: readIsoDate(searchParams, 'dateFrom'),
+      dateTo: readIsoDate(searchParams, 'dateTo'),
+      page: readPage(searchParams),
       size: PAGE_SIZE,
-      sort: searchParams.get('sort') ?? undefined,
-    };
-  }, [searchParams, status]);
-
-  const { data, isLoading, isFetching, isError, error, refetch } = useCards(filters);
-
-  const hasFilters = ['q', 'mfo', 'restrictionType', 'basisCategory', 'executorId', 'dateFrom', 'dateTo'].some(
-    (key) => searchParams.has(key),
+    }),
+    [searchParams, status],
   );
+  const page = filters.page ?? 0;
+
+  const { data, isLoading, isFetching, isPlaceholderData, isError, error, refetch } =
+    useCards(filters);
+
+  const hasFilters = FILTER_KEYS.some((key) => searchParams.has(key));
+
+  const totalPages = data?.page.totalPages ?? 0;
+  useEffect(() => {
+    if (totalPages > 0 && page >= totalPages) {
+      updateParams({ page: String(totalPages - 1) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalPages, page]);
 
   function updateParams(changes: Record<string, string | undefined>) {
     const next = new URLSearchParams(searchParams);
     Object.entries(changes).forEach(([key, value]) => {
-      if (value === undefined || value === '') {
+      if (value === undefined || value === '' || (key === 'page' && value === '0')) {
         next.delete(key);
       } else {
         next.set(key, value);
@@ -126,7 +142,15 @@ export function CardsListPage({ status }: CardsListPageProps) {
       title: 'Karta raqami',
       dataIndex: 'cardNumber',
       key: 'cardNumber',
-      render: (v: string) => formatCardNumber(v),
+      render: (v: string, record) => (
+        <Link
+          to={`/cards/${record.id}`}
+          style={{ whiteSpace: 'nowrap' }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {formatCardNumber(v)}
+        </Link>
+      ),
     },
     { title: 'MFO', dataIndex: 'mfo', key: 'mfo', render: (v: string | null) => v ?? '—' },
     {
@@ -139,7 +163,8 @@ export function CardsListPage({ status }: CardsListPageProps) {
       title: 'Karta balansi',
       dataIndex: 'balance',
       key: 'balance',
-      render: (v: number | null | undefined) => (typeof v === 'number' ? formatMoney(v) : '—'),
+      align: 'right',
+      render: (v: number | null) => <span style={{ whiteSpace: 'nowrap' }}>{formatMoney(v)}</span>,
     },
     {
       title: 'Cheklov turi',
@@ -178,29 +203,29 @@ export function CardsListPage({ status }: CardsListPageProps) {
       title: 'Yaratilgan',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (v: string) => formatDate(v),
+      render: (v: string) => <span style={{ whiteSpace: 'nowrap' }}>{formatDate(v)}</span>,
     },
   ];
 
   const unblockInfoColumns: ColumnsType<CardResponse> = [
     {
-      title: 'Ochish buyruqi',
+      title: 'Ochish buyrug\'i',
       dataIndex: 'unblockOrderNumber',
       key: 'unblockOrderNumber',
       width: 220,
-      render: (v: string | null | undefined) => <TruncatedText value={v ?? null} />,
+      render: (v: string | null) => <TruncatedText value={v} />,
     },
     {
       title: 'Ochilgan sana',
       dataIndex: 'unblockedAt',
       key: 'unblockedAt',
-      render: (v: string | null | undefined) => formatDate(v),
+      render: (v: string | null) => <span style={{ whiteSpace: 'nowrap' }}>{formatDate(v)}</span>,
     },
   ];
 
   const actionColumns: ColumnsType<CardResponse> = [
     {
-      title: '',
+      title: 'Amal',
       key: 'actions',
       fixed: 'right',
       render: (_, record) => (
@@ -227,47 +252,41 @@ export function CardsListPage({ status }: CardsListPageProps) {
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            {meta.title}
-          </Typography.Title>
-          <Typography.Text type="secondary">{meta.subtitle}</Typography.Text>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button
-            icon={<DownloadOutlined />}
-            loading={exportMutation.isPending}
-            onClick={() => exportMutation.mutate(filters)}
-          >
-            Excel
-          </Button>
-          {role === 'ANTI_FRAUD' && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/cards/new')}>
-              Yangi karta
+      <PageHeader
+        title={meta.title}
+        subtitle={meta.subtitle}
+        actions={
+          <>
+            <Button
+              icon={<DownloadOutlined />}
+              loading={exportMutation.isPending}
+              disabled={!data || data.page.totalElements === 0}
+              onClick={() => exportMutation.mutate(filters)}
+            >
+              Excel
             </Button>
-          )}
-        </div>
-      </div>
+            {role === 'ANTI_FRAUD' && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/cards/new')}>
+                Yangi karta
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <Card styles={{ body: { padding: 20 } }} style={{ borderRadius: 12, marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <SearchInput
             prefix={<SearchOutlined />}
             placeholder="Karta raqami, ijrochi, yuboruvchi yoki buyruq"
+            aria-label="Qidirish: karta raqami, ijrochi, yuboruvchi yoki buyruq"
             value={filters.q}
-            style={{ width: 320 }}
+            style={{ width: 320, maxWidth: '100%' }}
             onSearch={(value) => updateParams({ q: value })}
           />
           <SearchInput
             placeholder="MFO"
+            aria-label="MFO"
             value={filters.mfo}
             style={{ width: 110 }}
             maxLength={10}
@@ -276,33 +295,39 @@ export function CardsListPage({ status }: CardsListPageProps) {
           <Select
             allowClear
             placeholder="Cheklov turi"
+            aria-label="Cheklov turi"
             style={{ width: 150 }}
             value={filters.restrictionType}
             onChange={(v) => updateParams({ restrictionType: v })}
-            options={Object.entries(cardRestrictionLabels).map(([value, label]) => ({ value, label }))}
+            options={toOptions(cardRestrictionLabels)}
           />
           <Select
             allowClear
             placeholder="Asos"
+            aria-label="Asos"
             style={{ width: 200 }}
             value={filters.basisCategory}
             onChange={(v) => updateParams({ basisCategory: v })}
-            options={Object.entries(cardBasisLabels).map(([value, label]) => ({ value, label }))}
+            options={toOptions(cardBasisLabels)}
           />
           <Select
             allowClear
             showSearch
             optionFilterProp="label"
             placeholder="Ijrochi"
-            style={{ width: 260 }}
+            aria-label="Ijrochi"
+            style={{ width: 260, maxWidth: '100%' }}
             loading={isLoadingExecutors}
             value={filters.executorId}
-            onChange={(v) => updateParams({ executorId: v === undefined ? undefined : String(v) })}
+            onChange={(v: number | undefined) =>
+              updateParams({ executorId: v === undefined ? undefined : String(v) })
+            }
             options={executors.map((e) => ({ value: e.id, label: formatExecutor(e) }))}
           />
           <DatePicker.RangePicker
             format="DD.MM.YYYY"
             placeholder={['Sana dan', 'Sana gacha']}
+            allowEmpty={[true, true]}
             value={[
               filters.dateFrom ? dayjs(filters.dateFrom) : null,
               filters.dateTo ? dayjs(filters.dateTo) : null,
@@ -326,26 +351,32 @@ export function CardsListPage({ status }: CardsListPageProps) {
         {isError && !data ? (
           <QueryErrorState bare error={error} onRetry={() => void refetch()} />
         ) : (
-        <Table
-          rowKey="id"
-          loading={isLoading || isFetching}
-          columns={columns}
-          dataSource={data?.content ?? []}
-          scroll={{ x: 'max-content' }}
-          onRow={(record) => ({
-            onClick: () => navigate(`/cards/${record.id}`),
-            style: { cursor: 'pointer' },
-          })}
-          locale={{ emptyText: <EmptyState /> }}
-          pagination={{
-            current: filters.page + 1,
-            pageSize: PAGE_SIZE,
-            total: data?.page.totalElements ?? 0,
-            onChange: (page) => updateParams({ page: String(page - 1) }),
-            showSizeChanger: false,
-            showTotal: (total) => `Jami: ${total}`,
-          }}
-        />
+          <Table
+            rowKey="id"
+            loading={isLoading || (isFetching && isPlaceholderData)}
+            columns={columns}
+            dataSource={data?.content ?? []}
+            scroll={{ x: 'max-content' }}
+            onRow={(record) => ({
+              onClick: () => navigate(`/cards/${record.id}`),
+              style: { cursor: 'pointer' },
+            })}
+            locale={{
+              emptyText: (
+                <EmptyState
+                  description={hasFilters ? "Filtr bo'yicha karta topilmadi" : "Kartalar hali yo'q"}
+                />
+              ),
+            }}
+            pagination={{
+              current: page + 1,
+              pageSize: PAGE_SIZE,
+              total: data?.page.totalElements ?? 0,
+              onChange: (next) => updateParams({ page: String(next - 1) }),
+              showSizeChanger: false,
+              showTotal: (total) => `Jami: ${total}`,
+            }}
+          />
         )}
       </Card>
 

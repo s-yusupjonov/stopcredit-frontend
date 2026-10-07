@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import {
   ClockCircleOutlined,
   CreditCardOutlined,
@@ -18,6 +18,8 @@ interface NavLeaf {
   to: string;
   label: string;
   icon: React.ReactNode;
+  /** Extra paths that belong to this item (detail/edit pages), so it stays highlighted there. */
+  matches?: (pathname: string) => boolean;
 }
 
 interface NavGroup {
@@ -46,6 +48,10 @@ function isGroup(entry: NavEntry): entry is NavGroup {
   return 'children' in entry;
 }
 
+// /credits/123 and /credits/new are part of the credits section, /credits/mine is its own item
+const isCreditsSection = (pathname: string) =>
+  pathname.startsWith('/credits/') && !pathname.startsWith('/credits/mine');
+
 function navItemsFor(role: Role): NavEntry[] {
   if (role === 'ADMIN') {
     return [{ to: '/users', label: 'Foydalanuvchilar', icon: <TeamOutlined /> }];
@@ -54,11 +60,18 @@ function navItemsFor(role: Role): NavEntry[] {
   if (OWN_STAGE_ROLES.includes(role)) {
     return [
       { to: '/credits/mine', label: 'Mening bosqichim', icon: <ClockCircleOutlined /> },
-      { to: '/credits', label: 'Barcha kreditlar', icon: <FileTextOutlined /> },
+      {
+        to: '/credits',
+        label: 'Barcha kreditlar',
+        icon: <FileTextOutlined />,
+        matches: isCreditsSection,
+      },
     ];
   }
 
-  const items: NavEntry[] = [{ to: '/credits', label: 'Kreditlar', icon: <FileTextOutlined /> }];
+  const items: NavEntry[] = [
+    { to: '/credits', label: 'Kreditlar', icon: <FileTextOutlined />, matches: isCreditsSection },
+  ];
   if (CARD_ROLES.includes(role)) {
     items.push(cardsGroup);
   }
@@ -81,9 +94,10 @@ function NavGroupItem({ group }: { group: NavGroup }) {
         className={`${styles.navItem} ${styles.groupHeader} ${inGroup ? styles.groupHeaderActive : ''}`}
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
+        title={group.label}
       >
         {group.icon}
-        <span className={styles.groupLabel}>{group.label}</span>
+        <span className={`${styles.label} ${styles.groupLabel}`}>{group.label}</span>
         <DownOutlined className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`} />
       </button>
       {open && (
@@ -93,12 +107,13 @@ function NavGroupItem({ group }: { group: NavGroup }) {
               key={child.to}
               to={child.to}
               end
+              title={child.label}
               className={({ isActive }) =>
                 `${styles.navItem} ${styles.subItem} ${isActive ? styles.navItemActive : ''}`
               }
             >
               {child.icon}
-              {child.label}
+              <span className={styles.label}>{child.label}</span>
             </NavLink>
           ))}
         </div>
@@ -109,14 +124,15 @@ function NavGroupItem({ group }: { group: NavGroup }) {
 
 export function Sidebar({ role }: { role: Role }) {
   const visibleItems = navItemsFor(role);
+  const { pathname } = useLocation();
 
   return (
     <aside className={styles.sidebar}>
-      <div className={styles.logo}>
-        <img src={agrobankMark} alt="Agrobank" className={styles.logoChip} />
-        {env.appName}
-      </div>
-      <nav className={styles.nav}>
+      <Link to="/" className={styles.logo} aria-label={`${env.appName} — bosh sahifa`}>
+        <img src={agrobankMark} alt="" className={styles.logoChip} />
+        <span className={styles.label}>{env.appName}</span>
+      </Link>
+      <nav className={styles.nav} aria-label="Asosiy menyu">
         {visibleItems.map((item) =>
           isGroup(item) ? (
             <NavGroupItem key={item.basePath} group={item} />
@@ -125,12 +141,13 @@ export function Sidebar({ role }: { role: Role }) {
               key={item.to}
               to={item.to}
               end
+              title={item.label}
               className={({ isActive }) =>
-                `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
+                `${styles.navItem} ${isActive || item.matches?.(pathname) ? styles.navItemActive : ''}`
               }
             >
               {item.icon}
-              {item.label}
+              <span className={styles.label}>{item.label}</span>
             </NavLink>
           ),
         )}

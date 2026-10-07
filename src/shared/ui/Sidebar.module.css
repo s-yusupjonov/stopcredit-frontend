@@ -15,6 +15,7 @@
   font-size: 18px;
   font-weight: 700;
   color: var(--color-text);
+  text-decoration: none;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -105,4 +106,48 @@
 .subItem {
   padding: 8px 12px;
   font-size: 13px;
+}
+
+.logo:hover {
+  color: var(--color-text);
+}
+
+.navItem:focus-visible,
+.logo:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+/* Narrow screens: collapse to an icon rail so the content keeps its width */
+@media (max-width: 991px) {
+  .sidebar {
+    width: 64px;
+    min-width: 64px;
+  }
+
+  .logo {
+    justify-content: center;
+    padding: 18px 0;
+  }
+
+  .nav {
+    padding: 12px 8px;
+  }
+
+  .navItem {
+    justify-content: center;
+    padding: 10px 0;
+    font-size: 18px;
+  }
+
+  .label,
+  .chevron {
+    display: none;
+  }
+
+  .subNav {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+  }
 }

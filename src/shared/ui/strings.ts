@@ -13,7 +13,7 @@ export const stageLabels: Record<CreditStage, string> = {
   ANTI_FRAUD: 'Anti-fraud',
   CREDIT_MANAGEMENT: 'Kredit boshqaruvi',
   LEGAL: 'Yuridik bo\'lim',
-  UNDERWRITING: 'Muammoli Kreditlar',
+  UNDERWRITING: 'Muammoli kreditlar',
   COMPLETED: 'Yakunlangan',
 };
 

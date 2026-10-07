@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Button, Card, List, Popconfirm, Progress, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { FilePdfOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons';
-import type { CreditResponse, CreditStage } from '@/shared/api/types';
+import type { CreditResponse, DocumentResponse } from '@/shared/api/types';
 import { formatFileSize, formatDate } from '@/shared/ui/formatters';
-import { stageLabels } from '@/shared/ui/strings';
-import { useBatchedPdfUpload } from '@/shared/ui/pdfUpload';
+import { stageLabels, stageOrder } from '@/shared/ui/strings';
+import { PDF_ACCEPT, useBatchedPdfUpload } from '@/shared/ui/pdfUpload';
 import { colors } from '@/shared/theme';
 import { useUploadDocuments } from './hooks/useUploadDocuments';
 import { useDeleteDocument } from './hooks/useDeleteDocument';
@@ -22,23 +22,18 @@ export function DocumentsSection({ credit, canManageCurrentStage }: DocumentsSec
   const downloadMutation = useDownloadDocument(credit.id);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
-  const documentsByStage = new Map<CreditStage, typeof credit.documents>();
-  (credit.documents ?? []).forEach((doc) => {
-    const list = documentsByStage.get(doc.stage) ?? [];
-    list.push(doc);
-    documentsByStage.set(doc.stage, list);
-  });
-
-  const stagesWithDocs = Array.from(documentsByStage.keys());
-  if (canManageCurrentStage && !documentsByStage.has(credit.stage)) {
-    stagesWithDocs.push(credit.stage);
-  }
+  const documents = credit.documents ?? [];
+  const docsOf = (stage: string): DocumentResponse[] => documents.filter((doc) => doc.stage === stage);
+  // workflow order, so earlier departments' papers always come first
+  const stagesWithDocs = stageOrder.filter(
+    (stage) => docsOf(stage).length > 0 || (canManageCurrentStage && stage === credit.stage),
+  );
 
   const beforeUpload = useBatchedPdfUpload((files) => uploadMutation.mutate(files));
 
   const uploadProps: UploadProps = {
     multiple: true,
-    accept: 'application/pdf',
+    accept: PDF_ACCEPT,
     showUploadList: false,
     disabled: uploadMutation.isPending,
     beforeUpload,
@@ -51,7 +46,7 @@ export function DocumentsSection({ credit, canManageCurrentStage }: DocumentsSec
       )}
 
       {stagesWithDocs.map((stage) => {
-        const docs = documentsByStage.get(stage) ?? [];
+        const docs = docsOf(stage);
         const isCurrentEditableStage = canManageCurrentStage && stage === credit.stage;
 
         return (
@@ -69,6 +64,7 @@ export function DocumentsSection({ credit, canManageCurrentStage }: DocumentsSec
                       <Button
                         key="download"
                         type="link"
+                        aria-label={`${doc.fileName} faylini yuklab olish`}
                         loading={downloadMutation.isPending && downloadMutation.variables?.docId === doc.id}
                         onClick={() =>
                           downloadMutation.mutate({ docId: doc.id, fileName: doc.fileName })
@@ -93,7 +89,7 @@ export function DocumentsSection({ credit, canManageCurrentStage }: DocumentsSec
                             type="link"
                             danger
                             icon={<DeleteOutlined />}
-                            aria-label="Hujjatni o'chirish"
+                            aria-label={`${doc.fileName} faylini o'chirish`}
                             loading={deleteMutation.isPending && pendingDeleteId === doc.id}
                           />
                         </Popconfirm>
@@ -102,7 +98,7 @@ export function DocumentsSection({ credit, canManageCurrentStage }: DocumentsSec
                   >
                     <List.Item.Meta
                       avatar={<FilePdfOutlined style={{ fontSize: 20, color: colors.danger }} />}
-                      title={doc.fileName}
+                      title={<span style={{ overflowWrap: 'anywhere' }}>{doc.fileName}</span>}
                       description={`${formatFileSize(doc.sizeBytes)} · ${doc.uploadedBy} · ${formatDate(doc.uploadedAt)}`}
                     />
                   </List.Item>
@@ -118,6 +114,9 @@ export function DocumentsSection({ credit, canManageCurrentStage }: DocumentsSec
                   </p>
                   <p style={{ margin: '4px 0 0', fontSize: 13 }}>
                     PDF fayllarni shu yerga tashlang yoki yuklash uchun bosing
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: colors.textMuted }}>
+                    Keyingi bosqichga yuborish uchun kamida bitta hujjat kerak
                   </p>
                 </Upload.Dragger>
                 {uploadMutation.isPending && (

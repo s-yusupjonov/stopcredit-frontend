@@ -29,14 +29,20 @@ async function unwrapBlobError(error: unknown): Promise<void> {
   }
 }
 
+function sentWithToken(error: unknown): boolean {
+  const headers = (error as { config?: { headers?: Record<string, unknown> } })?.config?.headers;
+  return !!headers?.Authorization;
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     await unwrapBlobError(error);
-    if (error.response?.status === 401) {
+    // Only a rejected token means the session is over; a failed login attempt is just a wrong password.
+    if (error.response?.status === 401 && sentWithToken(error)) {
       useAuthStore.getState().clearSession();
       if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+        window.location.assign('/login');
       }
     }
     return Promise.reject(error);

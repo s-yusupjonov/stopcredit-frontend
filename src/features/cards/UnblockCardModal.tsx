@@ -1,12 +1,15 @@
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, Input, Modal, Typography, Upload, notification } from 'antd';
+import { Form, Input, Modal, Typography, Upload } from 'antd';
 import type { UploadFile } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 import type { CardResponse } from '@/shared/api/types';
 import { formatCardNumber, formatFileSize } from '@/shared/ui/formatters';
 import { handleFormError } from '@/shared/api/errorHandler';
-import { isAcceptablePdf } from '@/shared/ui/pdfUpload';
+import { FormField } from '@/shared/ui/FormField';
+import { ImplicitSubmit } from '@/shared/ui/ImplicitSubmit';
+import { feedback } from '@/shared/ui/feedback';
+import { PDF_ACCEPT, isAcceptablePdf } from '@/shared/ui/pdfUpload';
 import { colors } from '@/shared/theme';
 import { useUnblockCard } from './hooks/useUnblockCard';
 import { unblockSchema, type UnblockFormValues } from './schema';
@@ -49,7 +52,7 @@ export function UnblockCardModal({ card, onClose }: UnblockCardModalProps) {
         comment: values.comment || undefined,
         file: values.file,
       });
-      notification.success({ message: 'Karta blokdan ochildi' });
+      feedback.message.success('Karta blokdan ochildi');
       onClose();
     } catch (error) {
       handleFormError(error, setError);
@@ -61,12 +64,12 @@ export function UnblockCardModal({ card, onClose }: UnblockCardModalProps) {
       title="Kartani blokdan ochish"
       open={card !== null}
       onCancel={onClose}
-      onOk={handleSubmit(onSubmit)}
+      onOk={() => void handleSubmit(onSubmit)()}
       okText="Blokdan ochish"
       cancelText="Bekor qilish"
       confirmLoading={unblockMutation.isPending}
       afterClose={() => reset(DEFAULT_VALUES)}
-      destroyOnClose
+      destroyOnHidden
     >
       {card && (
         <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
@@ -74,34 +77,32 @@ export function UnblockCardModal({ card, onClose }: UnblockCardModalProps) {
         </Typography.Paragraph>
       )}
 
-      <Form layout="vertical">
-        <Form.Item
-          label="Buyruq raqami"
-          required
-          validateStatus={errors.orderNumber ? 'error' : ''}
-          help={errors.orderNumber?.message}
-        >
+      <Form layout="vertical" onFinish={() => void handleSubmit(onSubmit)()}>
+        <ImplicitSubmit />
+        <FormField label="Buyruq raqami" required htmlFor="unblock-order" error={errors.orderNumber?.message}>
           <Controller
             name="orderNumber"
             control={control}
             render={({ field }) => (
-              <Input {...field} maxLength={500} placeholder="MB 22.05.2026, MB 45-15/2108" />
+              <Input
+                {...field}
+                id="unblock-order"
+                autoFocus
+                maxLength={500}
+                placeholder="MB 22.05.2026, MB 45-15/2108"
+              />
             )}
           />
-        </Form.Item>
+        </FormField>
 
-        <Form.Item
-          label="Buyruq (PDF)"
-          required
-          validateStatus={errors.file ? 'error' : ''}
-          help={errors.file?.message}
-        >
+        <FormField label="Buyruq (PDF)" required htmlFor="unblock-file" error={errors.file?.message}>
           <Controller
             name="file"
             control={control}
             render={({ field }) => (
               <Upload.Dragger
-                accept="application/pdf"
+                id="unblock-file"
+                accept={PDF_ACCEPT}
                 maxCount={1}
                 multiple={false}
                 fileList={field.value ? [toUploadFile(field.value)] : []}
@@ -117,27 +118,23 @@ export function UnblockCardModal({ card, onClose }: UnblockCardModalProps) {
                 </p>
                 <p style={{ margin: '4px 0 0', fontSize: 13 }}>
                   {field.value
-                    ? `${field.value.name} (${formatFileSize(field.value.size)})`
+                    ? `Tanlandi: ${formatFileSize(field.value.size)}. Almashtirish uchun boshqa faylni tashlang`
                     : 'PDF faylni shu yerga tashlang yoki tanlash uchun bosing'}
                 </p>
               </Upload.Dragger>
             )}
           />
-        </Form.Item>
+        </FormField>
 
-        <Form.Item
-          label="Eslatma (ixtiyoriy)"
-          validateStatus={errors.comment ? 'error' : ''}
-          help={errors.comment?.message}
-        >
+        <FormField label="Eslatma (ixtiyoriy)" htmlFor="unblock-comment" error={errors.comment?.message}>
           <Controller
             name="comment"
             control={control}
             render={({ field }) => (
-              <Input.TextArea {...field} rows={3} maxLength={500} showCount />
+              <Input.TextArea {...field} id="unblock-comment" rows={3} maxLength={500} showCount />
             )}
           />
-        </Form.Item>
+        </FormField>
       </Form>
     </Modal>
   );

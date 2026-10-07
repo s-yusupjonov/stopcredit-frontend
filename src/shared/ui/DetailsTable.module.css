@@ -1,0 +1,80 @@
+.wrap {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow-x: auto;
+  /* keep the scrollbar visible so it is obvious there is more to the right */
+  scrollbar-width: thin;
+  scrollbar-color: #c5cad3 transparent;
+}
+
+.wrap::-webkit-scrollbar {
+  height: 8px;
+}
+
+.wrap::-webkit-scrollbar-thumb {
+  background: #c5cad3;
+  border-radius: 4px;
+}
+
+/* Fills the frame when there is room; otherwise grows to its content and the frame scrolls */
+.table {
+  min-width: 100%;
+  width: max-content;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+/* Visible only to screen readers: the card title already names the table for sighted users */
+.caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  border-right: 1px solid var(--color-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th:last-child,
+.table td:last-child {
+  border-right: none;
+}
+
+/* Field names: the spreadsheet's column headers */
+.table th {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+  background: #f5f7fa;
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.table td {
+  background: var(--color-surface);
+  vertical-align: top;
+}
+
+.wrapColumn {
+  min-width: 160px;
+  max-width: 240px;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+.strong {
+  font-weight: 600;
+}
+
+.empty {
+  color: var(--color-text-muted);
+}

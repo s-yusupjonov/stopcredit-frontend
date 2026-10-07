@@ -1,21 +1,35 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { message, Upload } from 'antd';
+import { Upload } from 'antd';
 import { env } from '@/shared/config/env';
+import { feedback } from './feedback';
 
 const MAX_FILE_NAME_LENGTH = 255;
 
+/** Upload `accept` value: the extension too, because some systems report PDFs with an empty MIME type. */
+export const PDF_ACCEPT = '.pdf,application/pdf';
+
+function looksLikePdf(file: { name: string; type: string }): boolean {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+}
+
 /** Bitta PDF faylni klient tomonda tekshiradi. Xato bo'lsa xabar ko'rsatadi. */
 export function isAcceptablePdf(file: { name: string; size: number; type: string }): boolean {
-  if (file.type !== 'application/pdf') {
-    message.error(`${file.name} — faqat PDF fayllar qabul qilinadi`);
+  if (!looksLikePdf(file)) {
+    feedback.message.error(`${file.name} — faqat PDF fayllar qabul qilinadi`);
+    return false;
+  }
+  if (file.size === 0) {
+    feedback.message.error(`${file.name} — fayl bo'sh`);
     return false;
   }
   if (file.name.length > MAX_FILE_NAME_LENGTH) {
-    message.error(`${file.name.slice(0, 40)}… — fayl nomi ${MAX_FILE_NAME_LENGTH} belgidan oshmasligi kerak`);
+    feedback.message.error(
+      `${file.name.slice(0, 40)}… — fayl nomi ${MAX_FILE_NAME_LENGTH} belgidan oshmasligi kerak`,
+    );
     return false;
   }
   if (file.size > env.maxUploadSizeMb * 1024 * 1024) {
-    message.error(`${file.name} — fayl hajmi ${env.maxUploadSizeMb}MB dan oshmasligi kerak`);
+    feedback.message.error(`${file.name} — fayl hajmi ${env.maxUploadSizeMb}MB dan oshmasligi kerak`);
     return false;
   }
   return true;

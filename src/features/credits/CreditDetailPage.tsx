@@ -1,36 +1,32 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  Button,
-  Card,
-  Descriptions,
-  Modal,
-  Segmented,
-  Skeleton,
-  Tooltip,
-  Typography,
-  notification,
-} from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { Button, Card, Modal, Segmented, Skeleton, Tooltip } from 'antd';
+import { ArrowLeftOutlined, EditOutlined } from '@ant-design/icons';
 import { StatusTag } from '@/shared/ui/StatusTag';
 import { StageTracker } from '@/shared/ui/StageTracker';
 import { QueryErrorState } from '@/shared/ui/QueryErrorState';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DetailsTable } from '@/shared/ui/DetailsTable';
+import { confirmAction, feedback } from '@/shared/ui/feedback';
 import { formatMoney, formatDate } from '@/shared/ui/formatters';
-import { typeLabels } from '@/shared/ui/strings';
+import { stageLabels, stageOrder, statusLabels, typeLabels } from '@/shared/ui/strings';
+import { useBackNavigation } from '@/shared/ui/useBackNavigation';
 import { notifyError } from '@/shared/api/errorHandler';
-import type { CreditStatus } from '@/shared/api/types';
+import type { CreditStage, CreditStatus, Role } from '@/shared/api/types';
 import { useAuth } from '@/features/auth/useAuth';
 import { useCredit } from './hooks/useCredit';
 import { useAdvanceCredit } from './hooks/useAdvanceCredit';
 import { useUpdateStatus } from './hooks/useUpdateStatus';
 import { DocumentsSection } from './DocumentsSection';
 
-const stageOwner: Record<string, string> = {
+const stageOwner: Record<CreditStage, Role | null> = {
   ANTI_FRAUD: 'ANTI_FRAUD',
   CREDIT_MANAGEMENT: 'CREDIT_MANAGEMENT',
   LEGAL: 'LEGAL',
   UNDERWRITING: 'UNDERWRITING',
+  COMPLETED: null,
 };
+
 
 export function CreditDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +37,17 @@ export function CreditDetailPage() {
   const advanceMutation = useAdvanceCredit(creditId);
   const updateStatusMutation = useUpdateStatus(creditId);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const goBack = useBackNavigation('/credits');
+
+  const backButton = (
+    <Button type="link" icon={<ArrowLeftOutlined />} style={{ padding: 0 }} onClick={goBack}>
+      Orqaga
+    </Button>
+  );
+
+  if (!Number.isInteger(creditId) || creditId <= 0) {
+    return <QueryErrorState error={{ response: { status: 404 } }} />;
+  }
 
   if (isError && !credit) {
     return <QueryErrorState error={error} onRetry={() => void refetch()} />;
@@ -56,90 +63,82 @@ export function CreditDetailPage() {
 
   const isOwningDepartment = role !== null && stageOwner[credit.stage] === role;
   const hasDocsAtCurrentStage = (credit.documents ?? []).some((d) => d.stage === credit.stage);
-  const canAdvance = isOwningDepartment && hasDocsAtCurrentStage && credit.stage !== 'COMPLETED';
+  const canAdvance = isOwningDepartment && hasDocsAtCurrentStage;
   const isLastStage = credit.stage === 'UNDERWRITING';
+  const nextStageLabel = isLastStage ? null : stageLabels[nextStage(credit.stage)];
 
   const handleAdvance = async () => {
     try {
       await advanceMutation.mutateAsync();
-      notification.success({ message: 'Muvaffaqiyatli yuborildi' });
-      setConfirmOpen(false);
-    } catch (error) {
-      notifyError(error);
+      feedback.message.success(isLastStage ? 'Kredit yakunlandi' : `Kredit "${nextStageLabel}" bosqichiga yuborildi`);
+    } catch (advanceError) {
+      notifyError(advanceError);
+    } finally {
       setConfirmOpen(false);
     }
   };
 
   const handleStatusChange = async (status: CreditStatus) => {
     if (status === credit.status) return;
+    const confirmed = await confirmAction({
+      title: `Kredit statusini "${statusLabels[status]}" ga o'zgartirasizmi?`,
+      content: `${credit.applicationNumber} — ${credit.lastName} ${credit.firstName}`,
+      okText: "O'zgartirish",
+      danger: status === 'STOPPED',
+    });
+    if (!confirmed) return;
     try {
       await updateStatusMutation.mutateAsync(status);
-      notification.success({ message: 'Status yangilandi' });
-    } catch (error) {
-      notifyError(error);
+      feedback.message.success('Status yangilandi');
+    } catch (statusError) {
+      notifyError(statusError);
     }
   };
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: 16,
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Typography.Title level={4} style={{ margin: 0 }}>
-              {credit.applicationNumber} — {credit.lastName} {credit.firstName}
-            </Typography.Title>
-            <StatusTag status={credit.status} />
-          </div>
-          <Typography.Text type="secondary">Kredit tafsilotlari</Typography.Text>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          {role === 'ANTI_FRAUD' && credit.stage === 'ANTI_FRAUD' && (
-            <Button icon={<EditOutlined />} onClick={() => navigate(`/credits/${credit.id}/edit`)}>
-              Tahrirlash
-            </Button>
-          )}
-
-          {role === 'CREDIT_MANAGEMENT' && (
-            <Segmented
-              value={credit.status}
-              onChange={(v) => handleStatusChange(v as CreditStatus)}
-              options={[
-                { label: 'Faol', value: 'ACTIVE' },
-                { label: "To'xtatilgan", value: 'STOPPED' },
-              ]}
-              disabled={updateStatusMutation.isPending}
-            />
-          )}
-
-          {isOwningDepartment && credit.stage !== 'COMPLETED' && (
-            <Tooltip
-              title={
-                !hasDocsAtCurrentStage
-                  ? 'Davom etish uchun kamida bitta hujjat yuklang'
-                  : undefined
-              }
-            >
-              <Button
-                type="primary"
-                disabled={!canAdvance}
-                onClick={() => setConfirmOpen(true)}
-              >
-                {isLastStage ? 'Yakunlash' : 'Keyingi bosqichga yuborish'}
+      <PageHeader
+        back={backButton}
+        title={`${credit.applicationNumber} — ${credit.lastName} ${credit.firstName}`}
+        tags={<StatusTag status={credit.status} />}
+        subtitle="Kredit tafsilotlari"
+        actions={
+          <>
+            {role === 'ANTI_FRAUD' && credit.stage === 'ANTI_FRAUD' && (
+              <Button icon={<EditOutlined />} onClick={() => navigate(`/credits/${credit.id}/edit`)}>
+                Tahrirlash
               </Button>
-            </Tooltip>
-          )}
-        </div>
-      </div>
+            )}
 
-      <Card style={{ borderRadius: 12, marginBottom: 16 }}>
+            {role === 'CREDIT_MANAGEMENT' && (
+              <Tooltip title="Kredit statusini o'zgartirish">
+                <Segmented
+                  aria-label="Kredit statusi"
+                  value={credit.status}
+                  onChange={(v) => void handleStatusChange(v as CreditStatus)}
+                  options={[
+                    { label: statusLabels.ACTIVE, value: 'ACTIVE' },
+                    { label: statusLabels.STOPPED, value: 'STOPPED' },
+                  ]}
+                  disabled={updateStatusMutation.isPending}
+                />
+              </Tooltip>
+            )}
+
+            {isOwningDepartment && (
+              <Tooltip
+                title={!hasDocsAtCurrentStage ? 'Davom etish uchun kamida bitta hujjat yuklang' : undefined}
+              >
+                <Button type="primary" disabled={!canAdvance} onClick={() => setConfirmOpen(true)}>
+                  {isLastStage ? 'Yakunlash' : 'Keyingi bosqichga yuborish'}
+                </Button>
+              </Tooltip>
+            )}
+          </>
+        }
+      />
+
+      <Card style={{ borderRadius: 12, marginBottom: 16 }} styles={{ body: { overflowX: 'auto' } }}>
         <StageTracker
           currentStage={credit.stage}
           deadline={credit.stageDeadline}
@@ -148,36 +147,47 @@ export function CreditDetailPage() {
       </Card>
 
       <Card title="Ma'lumotlar" style={{ borderRadius: 12 }}>
-        <Descriptions column={2} bordered size="small">
-          <Descriptions.Item label="Familiya">{credit.lastName}</Descriptions.Item>
-          <Descriptions.Item label="Ism">{credit.firstName}</Descriptions.Item>
-          <Descriptions.Item label="Sharif">{credit.middleName ?? '—'}</Descriptions.Item>
-          <Descriptions.Item label="PINFL">{credit.pinfl}</Descriptions.Item>
-          <Descriptions.Item label="Kredit turi">{typeLabels[credit.type]}</Descriptions.Item>
-          <Descriptions.Item label="MFO">{credit.mfo}</Descriptions.Item>
-          <Descriptions.Item label="Ariza raqami">{credit.applicationNumber}</Descriptions.Item>
-          <Descriptions.Item label="Summa">{formatMoney(credit.amount)}</Descriptions.Item>
-          <Descriptions.Item label="Yaratdi">{credit.createdBy}</Descriptions.Item>
-          <Descriptions.Item label="Yaratilgan sana">{formatDate(credit.createdAt)}</Descriptions.Item>
-          <Descriptions.Item label="Yangilangan sana" span={2}>
-            {formatDate(credit.updatedAt)}
-          </Descriptions.Item>
-        </Descriptions>
+        <DetailsTable
+          caption="Kredit ma'lumotlari"
+          items={[
+            { label: 'Familiya', value: credit.lastName },
+            { label: 'Ism', value: credit.firstName },
+            { label: 'Sharif', value: credit.middleName },
+            { label: 'PINFL', value: credit.pinfl },
+            { label: 'Kredit turi', value: typeLabels[credit.type] },
+            { label: 'MFO', value: credit.mfo },
+            { label: 'Ariza raqami', value: credit.applicationNumber },
+            { label: 'Summa', value: formatMoney(credit.amount), strong: true },
+            { label: 'Yaratdi', value: credit.createdBy },
+            { label: 'Bosqich', value: stageLabels[credit.stage] },
+            { label: 'Yaratilgan sana', value: formatDate(credit.createdAt) },
+            { label: 'Yangilangan sana', value: formatDate(credit.updatedAt) },
+          ]}
+        />
       </Card>
 
       <DocumentsSection credit={credit} canManageCurrentStage={isOwningDepartment} />
 
       <Modal
-        title={isLastStage ? "Kreditni yakunlashni tasdiqlaysizmi?" : 'Keyingi bosqichga yuborishni tasdiqlaysizmi?'}
+        title={isLastStage ? 'Kreditni yakunlashni tasdiqlaysizmi?' : 'Keyingi bosqichga yuborishni tasdiqlaysizmi?'}
         open={confirmOpen}
-        onOk={handleAdvance}
+        onOk={() => void handleAdvance()}
         onCancel={() => setConfirmOpen(false)}
         confirmLoading={advanceMutation.isPending}
         okText="Tasdiqlash"
         cancelText="Bekor qilish"
       >
-        <p>Bu amalni ortga qaytarib bo'lmaydi.</p>
+        <p>
+          {isLastStage
+            ? 'Kredit yakunlangan holatga o\'tadi.'
+            : `Kredit "${nextStageLabel}" bo'limiga yuboriladi va siz uni boshqa tahrirlay olmaysiz.`}{' '}
+          Bu amalni ortga qaytarib bo'lmaydi.
+        </p>
       </Modal>
     </div>
   );
+}
+
+function nextStage(stage: CreditStage): CreditStage {
+  return stageOrder[Math.min(stageOrder.indexOf(stage) + 1, stageOrder.length - 1)];
 }

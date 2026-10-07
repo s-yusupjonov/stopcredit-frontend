@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const userSchema = z.object({
   authSource: z.enum(['LOCAL', 'AD']),
   username: z.string().trim().min(1, 'Majburiy maydon').max(64, "Ko'pi bilan 64 ta belgi"),
-  fullName: z.string().min(1, 'Majburiy maydon').max(150),
+  fullName: z.string().trim().min(1, 'Majburiy maydon').max(150, "Ko'pi bilan 150 ta belgi"),
   role: z.enum(['ADMIN', 'ANTI_FRAUD', 'CREDIT_MANAGEMENT', 'LEGAL', 'UNDERWRITING', 'MANAGEMENT'], {
     required_error: 'Majburiy maydon',
   }),

@@ -1,5 +1,6 @@
 import { Form, Input, Modal } from 'antd';
 import { notifyError } from '@/shared/api/errorHandler';
+import { ImplicitSubmit } from '@/shared/ui/ImplicitSubmit';
 import type { ExecutorResponse } from '@/shared/api/types';
 import { useCreateExecutor } from './hooks/useCreateExecutor';
 
@@ -25,7 +26,7 @@ export function ExecutorModal({ open, onClose, onCreated }: ExecutorModalProps) 
       form.resetFields();
       onCreated(created);
     } catch (error) {
-      notifyError(error);
+      notifyError(error, "Ijrochini saqlab bo'lmadi");
     }
   };
 
@@ -39,14 +40,16 @@ export function ExecutorModal({ open, onClose, onCreated }: ExecutorModalProps) 
       cancelText="Bekor qilish"
       confirmLoading={createMutation.isPending}
       afterClose={() => form.resetFields()}
+      forceRender
     >
       <Form form={form} layout="vertical" onFinish={handleFinish}>
+        <ImplicitSubmit />
         <Form.Item
           label="F.I.Sh."
           name="name"
           rules={[{ required: true, whitespace: true, message: 'Majburiy maydon' }]}
         >
-          <Input maxLength={150} placeholder="A.Karimov" />
+          <Input maxLength={150} placeholder="A.Karimov" autoFocus />
         </Form.Item>
         <Form.Item label="Telefon" name="phone">
           <Input maxLength={50} placeholder="71 212 60 99" />

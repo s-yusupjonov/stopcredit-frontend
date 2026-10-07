@@ -1,20 +1,40 @@
-import { useState } from 'react';
-import { Button, Card, Switch, Table, Tag, Typography } from 'antd';
+import { useMemo, useState } from 'react';
+import { Button, Card, Input, Segmented, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined } from '@ant-design/icons';
-import type { UserResponse } from '@/shared/api/types';
+import { PlusOutlined, EditOutlined, SearchOutlined } from '@ant-design/icons';
+import type { Role, UserResponse } from '@/shared/api/types';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { QueryErrorState } from '@/shared/ui/QueryErrorState';
+import { PageHeader } from '@/shared/ui/PageHeader';
 import { formatDate } from '@/shared/ui/formatters';
 import { roleLabels } from '@/shared/ui/strings';
 import { colors } from '@/shared/theme';
 import { useUsers } from './hooks/useUsers';
 import { UserFormModal } from './UserFormModal';
 
+type StatusFilter = 'all' | 'active' | 'inactive';
+
 export function UsersPage() {
   const { data: users, isLoading, isError, error, refetch } = useUsers();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserResponse | null>(null);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  const visibleUsers = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return (users ?? []).filter((user) => {
+      if (statusFilter === 'active' && !user.active) return false;
+      if (statusFilter === 'inactive' && user.active) return false;
+      return (
+        !needle ||
+        user.username.toLowerCase().includes(needle) ||
+        user.fullName.toLowerCase().includes(needle)
+      );
+    });
+  }, [users, query, statusFilter]);
+
+  const pendingCount = (users ?? []).filter((u) => !u.active).length;
 
   function openCreate() {
     setEditingUser(null);
@@ -33,74 +53,114 @@ export function UsersPage() {
       title: 'Rol',
       dataIndex: 'role',
       key: 'role',
-      render: (v) => <Tag style={{ borderRadius: 999 }}>{roleLabels[v as keyof typeof roleLabels]}</Tag>,
+      render: (v: Role) => <Tag style={{ borderRadius: 999 }}>{roleLabels[v]}</Tag>,
     },
     {
-      title: 'Faol',
+      title: 'Holat',
       dataIndex: 'active',
       key: 'active',
-      render: (v: boolean) => (
-        <Switch checked={v} disabled size="small" />
-      ),
+      render: (v: boolean, record) =>
+        v ? (
+          <Tag color="green" style={{ borderRadius: 999 }}>
+            Faol
+          </Tag>
+        ) : (
+          <Tag color={record.authSource === 'AD' ? 'orange' : 'default'} style={{ borderRadius: 999 }}>
+            {record.authSource === 'AD' ? 'Tasdiq kutilmoqda' : 'Nofaol'}
+          </Tag>
+        ),
     },
     {
       title: 'Baza',
       dataIndex: 'authSource',
       key: 'authSource',
-      render: (v: 'LOCAL' | 'AD', record) => (
+      render: (v: UserResponse['authSource']) => (
         <Tag color={v === 'AD' ? 'blue' : 'default'} style={{ borderRadius: 999 }}>
           {v === 'AD' ? 'AD' : 'Lokal'}
-          {v === 'AD' && !record.active ? ' · tasdiq kutilmoqda' : ''}
         </Tag>
       ),
     },
-    { title: 'Yaratilgan', dataIndex: 'createdAt', key: 'createdAt', render: formatDate },
     {
-      title: '',
+      title: 'Yaratilgan',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (v: string) => <span style={{ whiteSpace: 'nowrap' }}>{formatDate(v)}</span>,
+    },
+    {
+      title: 'Amal',
       key: 'actions',
-      width: 60,
+      width: 70,
       render: (_, record) => (
-        <Button type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+        <Tooltip title="Tahrirlash">
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            aria-label={`${record.username} foydalanuvchisini tahrirlash`}
+            onClick={() => openEdit(record)}
+          />
+        </Tooltip>
       ),
     },
   ];
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            Foydalanuvchilar
-          </Typography.Title>
-          <Typography.Text type="secondary">Tizim foydalanuvchilarini boshqarish</Typography.Text>
+      <PageHeader
+        title="Foydalanuvchilar"
+        subtitle="Tizim foydalanuvchilarini boshqarish"
+        actions={
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            Yangi foydalanuvchi
+          </Button>
+        }
+      />
+
+      <Card styles={{ body: { padding: 20 } }} style={{ borderRadius: 12, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Input
+            allowClear
+            prefix={<SearchOutlined />}
+            placeholder="Login yoki F.I.Sh."
+            aria-label="Qidirish: login yoki F.I.Sh."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ width: 280, maxWidth: '100%' }}
+          />
+          <Segmented<StatusFilter>
+            aria-label="Holat bo'yicha filtr"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[
+              { label: 'Barchasi', value: 'all' },
+              { label: 'Faol', value: 'active' },
+              { label: `Nofaol${pendingCount > 0 ? ` (${pendingCount})` : ''}`, value: 'inactive' },
+            ]}
+          />
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-          Yangi foydalanuvchi
-        </Button>
-      </div>
+      </Card>
 
       <Card style={{ borderRadius: 12 }} styles={{ body: { padding: 0 } }}>
-        {isError ? (
+        {isError && !users ? (
           <QueryErrorState bare error={error} onRetry={() => void refetch()} />
         ) : (
-        <Table
-          rowKey="id"
-          loading={isLoading}
-          columns={columns}
-          dataSource={users ?? []}
-          pagination={false}
-          locale={{ emptyText: <EmptyState /> }}
-          onRow={(record) => ({
-            style: { background: !record.active ? colors.bg : undefined },
-          })}
-        />
+          <Table
+            rowKey="id"
+            loading={isLoading}
+            columns={columns}
+            dataSource={visibleUsers}
+            scroll={{ x: 'max-content' }}
+            pagination={visibleUsers.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
+            locale={{
+              emptyText: (
+                <EmptyState
+                  description={query || statusFilter !== 'all' ? 'Mos foydalanuvchi topilmadi' : undefined}
+                />
+              ),
+            }}
+            onRow={(record) => ({
+              style: { background: !record.active ? colors.bg : undefined },
+            })}
+          />
         )}
       </Card>
 

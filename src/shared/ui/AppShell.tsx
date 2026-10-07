@@ -24,7 +24,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
       <div className={styles.main}>
         <header className={styles.topbar}>
           <div className={styles.userArea}>
-            <div className={styles.avatar}>{initials(user.fullName)}</div>
+            <div className={styles.avatar} title={`${user.fullName} · ${roleLabels[role]}`} aria-hidden>
+              {initials(user.fullName)}
+            </div>
             <div className={styles.userMeta}>
               <span className={styles.userName}>{user.fullName}</span>
               <span className={styles.userRole}>{roleLabels[role]}</span>

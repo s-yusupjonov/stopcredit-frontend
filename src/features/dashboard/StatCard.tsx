@@ -15,7 +15,7 @@ export function StatCard({ label, value, icon, loading, tone = 'primary' }: Stat
   const iconBg = tone === 'danger' ? colors.dangerSoft : colors.primarySoft;
 
   return (
-    <Card style={{ borderRadius: 12, flex: 1, minWidth: 200 }} styles={{ body: { padding: 20 } }}>
+    <Card style={{ borderRadius: 12, flex: '1 1 200px' }} styles={{ body: { padding: 20 } }}>
       {loading ? (
         <Skeleton active paragraph={{ rows: 1 }} />
       ) : (
@@ -36,10 +36,10 @@ export function StatCard({ label, value, icon, loading, tone = 'primary' }: Stat
             {icon}
           </div>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#1f2430', lineHeight: 1.2 }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: colors.text, lineHeight: 1.2 }}>
               {value}
             </div>
-            <div style={{ fontSize: 13, color: '#6b7280' }}>{label}</div>
+            <div style={{ fontSize: 13, color: colors.textMuted }}>{label}</div>
           </div>
         </div>
       )}

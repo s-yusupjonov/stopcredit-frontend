@@ -24,7 +24,7 @@ export function EmptyState({
             <CheckCircleFilled style={{ fontSize: 56, color: colors.success }} />
           ) : undefined
         }
-        imageStyle={tone === 'success' ? { height: 56, marginBottom: 12 } : undefined}
+        styles={tone === 'success' ? { image: { height: 56, marginBottom: 12 } } : undefined}
         description={description}
       />
       {action && <div style={{ marginTop: 16 }}>{action}</div>}

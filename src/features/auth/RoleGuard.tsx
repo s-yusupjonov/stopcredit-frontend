@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { message } from 'antd';
 import { useEffect } from 'react';
 import type { Role } from '@/shared/api/types';
+import { feedback } from '@/shared/ui/feedback';
 import { useAuth } from './useAuth';
 
 export function RoleGuard({ allow }: { allow: Role[] }) {
@@ -10,7 +10,7 @@ export function RoleGuard({ allow }: { allow: Role[] }) {
 
   useEffect(() => {
     if (!allowed) {
-      message.warning('Sizda ushbu sahifaga kirish huquqi yo\'q');
+      feedback.message.warning('Sizda ushbu sahifaga kirish huquqi yo\'q');
     }
   }, [allowed]);
 

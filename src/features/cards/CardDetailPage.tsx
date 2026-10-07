@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, Descriptions, Skeleton, Tag, Typography } from 'antd';
+import { Button, Card, Skeleton, Tag } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, UnlockOutlined } from '@ant-design/icons';
 import { CardStatusTag } from '@/shared/ui/CardStatusTag';
 import { QueryErrorState } from '@/shared/ui/QueryErrorState';
+import { PageHeader } from '@/shared/ui/PageHeader';
+import { DetailsTable } from '@/shared/ui/DetailsTable';
+import { useBackNavigation } from '@/shared/ui/useBackNavigation';
 import {
   formatCardNumber,
   formatDate,
@@ -17,6 +20,7 @@ import { useCard } from './hooks/useCard';
 import { CardDocumentsSection } from './CardDocumentsSection';
 import { UnblockCardModal } from './UnblockCardModal';
 
+
 export function CardDetailPage() {
   const { id } = useParams<{ id: string }>();
   const cardId = Number(id);
@@ -24,6 +28,11 @@ export function CardDetailPage() {
   const { role } = useAuth();
   const { data: card, isLoading, isError, error, refetch } = useCard(cardId);
   const [isUnblockOpen, setIsUnblockOpen] = useState(false);
+  const goBack = useBackNavigation(card?.status === 'ACTIVE' ? '/cards/active' : '/cards/blocked');
+
+  if (!Number.isInteger(cardId) || cardId <= 0) {
+    return <QueryErrorState error={{ response: { status: 404 } }} />;
+  }
 
   if (isError && !card) {
     return <QueryErrorState error={error} onRetry={() => void refetch()} />;
@@ -39,93 +48,84 @@ export function CardDetailPage() {
 
   const canManage = role === 'ANTI_FRAUD';
   const canUnblock = canManage && card.status === 'BLOCKED';
-  const listPath = card.status === 'BLOCKED' ? '/cards/blocked' : '/cards/active';
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: 16,
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Typography.Title level={4} style={{ margin: 0 }}>
-              {formatCardNumber(card.cardNumber)}
-            </Typography.Title>
-            <CardStatusTag status={card.status} />
-          </div>
-          <Typography.Text type="secondary">Karta tafsilotlari</Typography.Text>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(listPath)}>
+      <PageHeader
+        back={
+          <Button type="link" icon={<ArrowLeftOutlined />} style={{ padding: 0 }} onClick={goBack}>
             Ro'yxatga qaytish
           </Button>
-          {canUnblock && (
-            <Button icon={<UnlockOutlined />} onClick={() => setIsUnblockOpen(true)}>
-              Blokdan ochish
-            </Button>
-          )}
-          {canManage && (
-            <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/cards/${card.id}/edit`)}>
-              Tahrirlash
-            </Button>
-          )}
-        </div>
-      </div>
+        }
+        title={formatCardNumber(card.cardNumber)}
+        tags={<CardStatusTag status={card.status} />}
+        subtitle="Karta tafsilotlari"
+        actions={
+          <>
+            {canUnblock && (
+              <Button icon={<UnlockOutlined />} onClick={() => setIsUnblockOpen(true)}>
+                Blokdan ochish
+              </Button>
+            )}
+            {canManage && (
+              <Button
+                type="primary"
+                icon={<EditOutlined />}
+                onClick={() => navigate(`/cards/${card.id}/edit`)}
+              >
+                Tahrirlash
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <Card title="Ma'lumotlar" style={{ borderRadius: 12 }}>
-        <Descriptions column={2} bordered size="small">
-          <Descriptions.Item label="T/r">{card.id}</Descriptions.Item>
-          <Descriptions.Item label="Karta raqami">{formatCardNumber(card.cardNumber)}</Descriptions.Item>
-          <Descriptions.Item label="MFO">{card.mfo ?? '—'}</Descriptions.Item>
-          <Descriptions.Item label="Sana">{formatDateShort(card.restrictionDate)}</Descriptions.Item>
-          <Descriptions.Item label="Karta balansi">
-            {typeof card.balance === 'number' ? formatMoney(card.balance) : '—'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Cheklov turi">
-            {card.restrictionType ? cardRestrictionLabels[card.restrictionType] : '—'}
-          </Descriptions.Item>
-          <Descriptions.Item label="Asos">
-            <Tag>{cardBasisLabels[card.basisCategory]}</Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="Buyruq raqami">{card.basisComment ?? '—'}</Descriptions.Item>
-          <Descriptions.Item label="Status">
-            <CardStatusTag status={card.status} />
-          </Descriptions.Item>
-          <Descriptions.Item label="Eslatma">{card.statusComment ?? '—'}</Descriptions.Item>
-          <Descriptions.Item label="Ijrochi" span={2}>
-            {formatExecutor(card.executor)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Yuboruvchi">{card.senderName}</Descriptions.Item>
-          <Descriptions.Item label="Yaratilgan sana">{formatDate(card.createdAt)}</Descriptions.Item>
-          <Descriptions.Item label="Yangilangan sana" span={2}>
-            {formatDate(card.updatedAt)}
-          </Descriptions.Item>
-        </Descriptions>
+        <DetailsTable
+          caption="Karta ma'lumotlari"
+          items={[
+            { label: 'T/r', value: card.id },
+            { label: 'Karta raqami', value: formatCardNumber(card.cardNumber) },
+            { label: 'Status', value: <CardStatusTag status={card.status} /> },
+            {
+              label: 'Karta balansi',
+              value: card.balance === null ? null : formatMoney(card.balance),
+              strong: true,
+            },
+            { label: 'MFO', value: card.mfo },
+            { label: 'Sana', value: card.restrictionDate && formatDateShort(card.restrictionDate) },
+            {
+              label: 'Cheklov turi',
+              value: card.restrictionType && cardRestrictionLabels[card.restrictionType],
+            },
+            { label: 'Asos', value: <Tag style={{ margin: 0 }}>{cardBasisLabels[card.basisCategory]}</Tag> },
+            { label: 'Buyruq raqami', value: card.basisComment, wrap: true },
+            { label: 'Eslatma', value: card.statusComment, wrap: true },
+            { label: 'Ijrochi', value: formatExecutor(card.executor), wrap: true },
+            { label: 'Yuboruvchi', value: card.senderName },
+            { label: 'Yaratilgan sana', value: formatDate(card.createdAt) },
+            { label: 'Yangilangan sana', value: formatDate(card.updatedAt) },
+          ]}
+        />
       </Card>
 
       {card.unblockedAt && (
         <Card title="Blokdan ochish" style={{ borderRadius: 12, marginTop: 16 }}>
-          <Descriptions column={2} bordered size="small">
-            <Descriptions.Item label="Buyruq raqami">{card.unblockOrderNumber ?? '—'}</Descriptions.Item>
-            <Descriptions.Item label="Ochilgan sana">{formatDate(card.unblockedAt)}</Descriptions.Item>
-            <Descriptions.Item label="Ochgan xodim">{card.unblockedBy ?? '—'}</Descriptions.Item>
-            <Descriptions.Item label="Eslatma">{card.unblockComment ?? '—'}</Descriptions.Item>
-          </Descriptions>
+          <DetailsTable
+            caption="Blokdan ochish ma'lumotlari"
+            items={[
+              { label: 'Buyruq raqami', value: card.unblockOrderNumber, wrap: true },
+              { label: 'Ochilgan sana', value: formatDate(card.unblockedAt) },
+              { label: 'Ochgan xodim', value: card.unblockedBy },
+              { label: 'Eslatma', value: card.unblockComment, wrap: true },
+            ]}
+          />
         </Card>
       )}
 
       <CardDocumentsSection card={card} canManage={canManage} />
 
-      <UnblockCardModal
-        card={isUnblockOpen ? card : null}
-        onClose={() => setIsUnblockOpen(false)}
-      />
+      <UnblockCardModal card={isUnblockOpen ? card : null} onClose={() => setIsUnblockOpen(false)} />
     </div>
   );
 }

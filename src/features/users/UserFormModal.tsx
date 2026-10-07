@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Form, Input, Modal, Select, Switch } from 'antd';
+import { FormField } from '@/shared/ui/FormField';
+import { ImplicitSubmit } from '@/shared/ui/ImplicitSubmit';
+import { confirmAction, feedback } from '@/shared/ui/feedback';
 import { SearchOutlined } from '@ant-design/icons';
 import type { UserResponse } from '@/shared/api/types';
 import { roleLabels } from '@/shared/ui/strings';
@@ -107,21 +110,16 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
     const losesAdmin = values.role !== 'ADMIN' || !values.active;
     if (!losesAdmin) return Promise.resolve(true);
     const isSelf = currentUser?.id === editingUser.id;
-    return new Promise((resolve) => {
-      Modal.confirm({
-        title: isSelf
-          ? "O'zingizning administrator huquqingizni olib tashlamoqchimisiz?"
-          : 'Administrator huquqini olib tashlamoqchimisiz?',
-        content: values.active
-          ? "Rol o'zgartiriladi va foydalanuvchi administrator sahifalariga kira olmaydi."
-          : "Foydalanuvchi faolsizlantiriladi va tizimga kira olmaydi."
-            + (isSelf ? ' Siz tizimdan chiqarilishingiz mumkin.' : ''),
-        okText: 'Ha, davom etish',
-        cancelText: 'Bekor qilish',
-        okButtonProps: { danger: true },
-        onOk: () => resolve(true),
-        onCancel: () => resolve(false),
-      });
+    return confirmAction({
+      title: isSelf
+        ? "O'zingizning administrator huquqingizni olib tashlamoqchimisiz?"
+        : 'Administrator huquqini olib tashlamoqchimisiz?',
+      content: values.active
+        ? "Rol o'zgartiriladi va foydalanuvchi administrator sahifalariga kira olmaydi."
+        : "Foydalanuvchi faolsizlantiriladi va tizimga kira olmaydi."
+          + (isSelf ? ' Siz tizimdan chiqarilishingiz mumkin.' : ''),
+      okText: 'Ha, davom etish',
+      danger: true,
     });
   }
 
@@ -142,6 +140,7 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
             ...(values.password ? { password: values.password } : {}),
           },
         });
+        feedback.message.success("O'zgarishlar saqlandi");
       } else {
         await createMutation.mutateAsync({
           username: values.username.trim(),
@@ -150,6 +149,7 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
           authSource: values.authSource,
           ...(values.authSource === 'LOCAL' ? { password: values.password ?? '' } : {}),
         });
+        feedback.message.success('Foydalanuvchi yaratildi');
       }
       onClose();
     } catch (error) {
@@ -162,13 +162,15 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
       title={editingUser ? 'Foydalanuvchini tahrirlash' : 'Yangi foydalanuvchi'}
       open={open}
       onCancel={onClose}
-      onOk={handleSubmit(onSubmit)}
+      onOk={() => void handleSubmit(onSubmit)()}
       confirmLoading={isSubmitting}
       okText="Saqlash"
       cancelText="Bekor qilish"
-      destroyOnClose
+      destroyOnHidden
     >
-      <Form layout="vertical">
+      {/* Enter submits the form, except in the AD search box where it runs the lookup */}
+      <Form layout="vertical" onFinish={isAdCreate ? undefined : () => void handleSubmit(onSubmit)()}>
+        {!isAdCreate && <ImplicitSubmit />}
         {isCreate && (
           <Form.Item label="Baza">
             <Controller
@@ -192,11 +194,12 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
           </Form.Item>
         )}
 
-        <Form.Item
+        <FormField
           label="Login"
           required
-          validateStatus={errors.username ? 'error' : ''}
-          help={errors.username?.message}
+          htmlFor="user-username"
+          error={errors.username?.message}
+          extra={editingUser ? "Loginni o'zgartirib bo'lmaydi" : undefined}
         >
           <Controller
             name="username"
@@ -205,6 +208,8 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
               isAdCreate ? (
                 <Input.Search
                   {...field}
+                  id="user-username"
+                  autoFocus
                   placeholder="AD dagi login"
                   enterButton={<SearchOutlined />}
                   loading={adLookup.isPending}
@@ -215,11 +220,17 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
                   }}
                 />
               ) : (
-                <Input {...field} readOnly={!!editingUser} disabled={!!editingUser} />
+                <Input
+                  {...field}
+                  id="user-username"
+                  autoFocus={!editingUser}
+                  autoComplete="off"
+                  disabled={!!editingUser}
+                />
               )
             }
           />
-        </Form.Item>
+        </FormField>
 
         {isAdCreate && adChecked === 'found' && (
           <Alert
@@ -246,61 +257,67 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
           />
         )}
 
-        <Form.Item
+        <FormField
           label="F.I.Sh."
           required
-          validateStatus={errors.fullName ? 'error' : ''}
-          help={errors.fullName?.message}
+          htmlFor="user-fullName"
+          error={errors.fullName?.message}
+          extra={isAdCreate ? "AD dan avtomatik to'ldiriladi" : undefined}
         >
           <Controller
             name="fullName"
             control={control}
             render={({ field }) => (
-              <Input {...field} readOnly={isAdCreate} disabled={isAdCreate && adChecked !== 'found'} />
+              <Input
+                {...field}
+                id="user-fullName"
+                maxLength={150}
+                readOnly={isAdCreate}
+                disabled={isAdCreate && adChecked !== 'found'}
+              />
             )}
           />
-        </Form.Item>
+        </FormField>
 
-        <Form.Item
-          label="Rol"
-          required
-          validateStatus={errors.role ? 'error' : ''}
-          help={errors.role?.message}
-        >
+        <FormField label="Rol" required htmlFor="user-role" error={errors.role?.message}>
           <Controller
             name="role"
             control={control}
             render={({ field }) => (
               <Select
                 {...field}
+                id="user-role"
                 options={Object.entries(roleLabels).map(([value, label]) => ({ value, label }))}
               />
             )}
           />
-        </Form.Item>
+        </FormField>
 
         {(!isCreate ? editingUser?.authSource !== 'AD' : authSource === 'LOCAL') && (
-          <Form.Item
-            label={editingUser ? "Parol (o'zgartirmaslik uchun bo'sh qoldiring)" : 'Parol'}
+          <FormField
+            label={editingUser ? "Yangi parol (o'zgartirmaslik uchun bo'sh qoldiring)" : 'Parol'}
             required={isCreate}
-            validateStatus={errors.password ? 'error' : ''}
-            help={errors.password?.message}
+            htmlFor="user-password"
+            error={errors.password?.message}
+            extra="6 dan 72 tagacha belgi"
           >
             <Controller
               name="password"
               control={control}
-              render={({ field }) => <Input.Password {...field} autoComplete="new-password" />}
+              render={({ field }) => (
+                <Input.Password {...field} id="user-password" autoComplete="new-password" />
+              )}
             />
-          </Form.Item>
+          </FormField>
         )}
 
         {editingUser && (
-          <Form.Item label="Faol">
+          <Form.Item label="Faol" htmlFor="user-active">
             <Controller
               name="active"
               control={control}
               render={({ field }) => (
-                <Switch checked={field.value} onChange={field.onChange} />
+                <Switch id="user-active" checked={field.value} onChange={field.onChange} />
               )}
             />
           </Form.Item>

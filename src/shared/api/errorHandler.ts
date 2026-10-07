@@ -1,5 +1,5 @@
-import { notification } from 'antd';
 import type { UseFormSetError, FieldValues, Path } from 'react-hook-form';
+import { feedback } from '@/shared/ui/feedback';
 import type { ProblemDetail } from './types';
 
 function isProblemDetail(data: unknown): data is ProblemDetail {
@@ -44,13 +44,20 @@ function statusMessage(status: number | undefined, network: boolean): string | n
 }
 
 export function errorMessage(error: unknown, fallback = 'Xatolik yuz berdi'): string {
+  const status = getErrorStatus(error);
+  const network = isNetworkError(error);
+  // Proxy/gateway answers (413 from nginx, 502/504) carry no ProblemDetail of ours, so the
+  // generic Uzbek text is more useful than whatever HTML or English body came back.
+  if (network || status === 413 || status === 502 || status === 503 || status === 504) {
+    return statusMessage(status, network) ?? fallback;
+  }
   const problem = extractProblemDetail(error);
   if (problem?.detail) return problem.detail;
-  return statusMessage(getErrorStatus(error), isNetworkError(error)) ?? fallback;
+  return statusMessage(status, network) ?? fallback;
 }
 
 export function notifyError(error: unknown, fallback = 'Xatolik yuz berdi') {
-  notification.error({
+  feedback.notification.error({
     message: 'Xatolik',
     description: errorMessage(error, fallback),
   });
@@ -66,6 +73,7 @@ export function handleFormError<T extends FieldValues>(
     Object.entries(problem.errors).forEach(([field, message]) => {
       setError(field as Path<T>, { type: 'server', message });
     });
+    feedback.message.error(problem.detail || "Ma'lumotlar noto'g'ri to'ldirilgan");
     return;
   }
   notifyError(error, fallback);

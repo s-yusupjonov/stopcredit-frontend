@@ -1,19 +1,12 @@
 import { useMutation } from '@tanstack/react-query';
 import { notifyError } from '@/shared/api/errorHandler';
 import { cardsApi } from '@/shared/api/endpoints';
+import { downloadBlob } from '@/shared/ui/downloadBlob';
 
 export function useDownloadCardDocument(cardId: number) {
   return useMutation({
     mutationFn: async ({ docId, fileName }: { docId: number; fileName: string }) => {
-      const blob = await cardsApi.downloadDocument(cardId, docId);
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
+      downloadBlob(await cardsApi.downloadDocument(cardId, docId), fileName);
     },
     onError: (error) => notifyError(error, 'Hujjatni yuklab olib bo\'lmadi'),
   });

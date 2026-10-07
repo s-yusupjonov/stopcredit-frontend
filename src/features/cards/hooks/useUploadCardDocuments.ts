@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { notification } from 'antd';
 import { useState } from 'react';
 import { cardsApi } from '@/shared/api/endpoints';
 import { notifyError } from '@/shared/api/errorHandler';
+import { feedback } from '@/shared/ui/feedback';
 import { queryKeys } from '@/shared/api/queryKeys';
 
 export function useUploadCardDocuments(cardId: number) {
@@ -14,7 +14,7 @@ export function useUploadCardDocuments(cardId: number) {
     onSuccess: (docs) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cards.detail(cardId) });
       setProgress(0);
-      notification.success({ message: `${docs.length} ta hujjat yuklandi` });
+      feedback.message.success(`${docs.length} ta hujjat yuklandi`);
     },
     onError: (error) => {
       setProgress(0);

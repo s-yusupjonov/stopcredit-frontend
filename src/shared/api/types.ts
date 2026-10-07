@@ -81,6 +81,8 @@ export interface CreditResponse {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  /** Optimistic-lock version; sent back on update so a stale screen gets 409 instead of overwriting. */
+  version: number;
   documents: DocumentResponse[] | null;
 }
 
@@ -94,6 +96,7 @@ export interface CreditRequest {
   applicationNumber: string;
   amount: number;
   status: CreditStatus;
+  version?: number;
 }
 
 export interface Page<T> {
@@ -165,7 +168,7 @@ export interface CardResponse {
   cardNumber: string;
   mfo: string | null;
   restrictionDate: string | null;
-  balance?: number | null;
+  balance: number | null;
   restrictionType: CardRestrictionType | null;
   basisCategory: CardBasisCategory;
   basisComment: string | null;
@@ -175,10 +178,11 @@ export interface CardResponse {
   senderName: string;
   createdAt: string;
   updatedAt: string;
-  unblockOrderNumber?: string | null;
-  unblockComment?: string | null;
-  unblockedAt?: string | null;
-  unblockedBy?: string | null;
+  unblockOrderNumber: string | null;
+  unblockComment: string | null;
+  unblockedAt: string | null;
+  unblockedBy: string | null;
+  version: number;
   documents: CardDocumentResponse[] | null;
 }
 
@@ -199,6 +203,7 @@ export interface CardRequest {
   status: CardStatus;
   statusComment?: string;
   executorId: number;
+  version?: number;
 }
 
 export interface CardsFilters {
