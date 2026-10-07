@@ -2,6 +2,7 @@ import { CheckOutlined, ExclamationOutlined } from '@ant-design/icons';
 import type { CreditStage } from '@/shared/api/types';
 import { stageLabels, stageOrder } from './strings';
 import { formatRemainingTime, formatOverdueTime } from './formatters';
+import { useNow } from './useNow';
 import styles from './StageTracker.module.css';
 
 interface StageTrackerProps {
@@ -25,7 +26,12 @@ function getStepState(
   return danger ? 'danger' : 'in-progress';
 }
 
-export function StageTracker({ currentStage, deadline, danger }: StageTrackerProps) {
+export function StageTracker({ currentStage, deadline, danger: serverDanger }: StageTrackerProps) {
+  const now = useNow();
+  // Server `danger` ni o'zi hisoblaydi; ekran ochiq tursa muddat o'tishini ham o'zimiz payqaymiz.
+  const danger =
+    serverDanger ||
+    (currentStage !== 'COMPLETED' && !!deadline && new Date(deadline).getTime() <= now);
   return (
     <div className={styles.tracker}>
       {stageOrder.map((stage) => {

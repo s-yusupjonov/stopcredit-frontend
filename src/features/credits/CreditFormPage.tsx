@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { Button, Card, Form, Input, Select, Typography } from 'antd';
 import { typeLabels, statusLabels } from '@/shared/ui/strings';
 import { MoneyInput } from '@/shared/ui/MoneyInput';
 import { handleFormError } from '@/shared/api/errorHandler';
+import { QueryErrorState } from '@/shared/ui/QueryErrorState';
 import { useCredit } from './hooks/useCredit';
 import { useCreateCredit } from './hooks/useCreateCredit';
 import { useUpdateCredit } from './hooks/useUpdateCredit';
@@ -17,7 +18,14 @@ export function CreditFormPage() {
   const creditId = Number(id);
   const navigate = useNavigate();
 
-  const { data: existing, isLoading: isLoadingCredit } = useCredit(creditId);
+  const {
+    data: existing,
+    isLoading: isLoadingCredit,
+    isError: isLoadError,
+    error: loadError,
+    refetch,
+  } = useCredit(isEdit ? creditId : Number.NaN);
+  const initializedFor = useRef<number | null>(null);
   const createMutation = useCreateCredit();
   const updateMutation = useUpdateCredit(creditId);
 
@@ -42,7 +50,8 @@ export function CreditFormPage() {
   });
 
   useEffect(() => {
-    if (isEdit && existing) {
+    if (isEdit && existing && initializedFor.current !== existing.id) {
+      initializedFor.current = existing.id;
       reset({
         firstName: existing.firstName,
         lastName: existing.lastName,
@@ -74,7 +83,11 @@ export function CreditFormPage() {
     }
   };
 
-  if (isEdit && isLoadingCredit) {
+  if (isEdit && isLoadError && !existing) {
+    return <QueryErrorState error={loadError} onRetry={() => void refetch()} />;
+  }
+
+  if (isEdit && (isLoadingCredit || !existing)) {
     return <Card loading style={{ borderRadius: 12 }} />;
   }
 
@@ -206,6 +219,7 @@ export function CreditFormPage() {
             </Form.Item>
           </div>
 
+          {!isEdit && (
           <Form.Item
             label="Status"
             required
@@ -226,6 +240,7 @@ export function CreditFormPage() {
               )}
             />
           </Form.Item>
+          )}
 
           <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
             <Button type="primary" htmlType="submit" loading={isSubmitting}>

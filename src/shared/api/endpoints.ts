@@ -4,11 +4,13 @@ import type {
   CardDocumentResponse,
   CardRequest,
   CardResponse,
+  CardUnblockPayload,
   CardsFilters,
   CreditRequest,
   CreditResponse,
   CreditsFilters,
   CreditStatus,
+  CreditSummary,
   DocumentResponse,
   ExecutorRequest,
   ExecutorResponse,
@@ -23,6 +25,7 @@ import type {
 export const authApi = {
   login: (payload: LoginRequest) =>
     api.post<LoginResponse>('/auth/login', payload).then((r) => r.data),
+  me: () => api.get<UserResponse>('/auth/me').then((r) => r.data),
 };
 
 export const usersApi = {
@@ -60,6 +63,7 @@ export const creditsApi = {
         responseType: 'blob',
       })
       .then((r) => r.data as Blob),
+  summary: () => api.get<CreditSummary>('/credits/summary').then((r) => r.data),
   get: (id: number) => api.get<CreditResponse>(`/credits/${id}`).then((r) => r.data),
   create: (payload: CreditRequest) =>
     api.post<CreditResponse>('/credits', payload).then((r) => r.data),
@@ -124,6 +128,19 @@ export const cardsApi = {
   create: (payload: CardRequest) => api.post<CardResponse>('/cards', payload).then((r) => r.data),
   update: (id: number, payload: CardRequest) =>
     api.put<CardResponse>(`/cards/${id}`, payload).then((r) => r.data),
+  unblock: (id: number, payload: CardUnblockPayload) => {
+    const formData = new FormData();
+    formData.append('orderNumber', payload.orderNumber);
+    if (payload.comment) {
+      formData.append('comment', payload.comment);
+    }
+    formData.append('files', payload.file);
+    return api
+      .post<CardResponse>(`/cards/${id}/unblock`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data);
+  },
   uploadDocuments: (id: number, files: File[], onProgress?: (percent: number) => void) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Card, Input, Select, Switch, Table, Tooltip, Typography } from 'antd';
+import { Button, Card, Select, Switch, Table, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   PlusOutlined,
@@ -15,6 +15,9 @@ import type { CreditResponse, CreditStage, CreditStatus, CreditType } from '@/sh
 import { StatusTag } from '@/shared/ui/StatusTag';
 import { StageTag } from '@/shared/ui/StageTag';
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { SearchInput } from '@/shared/ui/SearchInput';
+import { QueryErrorState } from '@/shared/ui/QueryErrorState';
+import { useNow } from '@/shared/ui/useNow';
 import { formatMoney, formatDate, formatRemainingTime, formatOverdueTime } from '@/shared/ui/formatters';
 import { stageLabels, statusLabels, typeLabels } from '@/shared/ui/strings';
 import { colors } from '@/shared/theme';
@@ -38,6 +41,7 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
   const { role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const exportMutation = useExportCredits();
+  const now = useNow();
 
   const isMine = scope === 'mine';
   const forcedStage = isMine ? (role as CreditStage) : undefined;
@@ -56,16 +60,13 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
     [searchParams, forcedStage],
   );
 
-  const { data, isLoading, isFetching } = useCredits(filters);
+  const { data, isLoading, isFetching, isError, error, refetch } = useCredits(filters);
 
   const isAntiFraud = role === 'ANTI_FRAUD';
   const showStats = isAntiFraud || isMine;
-  const { data: summaryData, isLoading: isSummaryLoading } = useDashboardSummary(showStats);
-  const summaryCredits = summaryData?.content ?? [];
-  const totalCount = summaryData?.page.totalElements ?? 0;
-  const dangerCount = summaryCredits.filter((c) => c.danger).length;
-  const completedCount = summaryCredits.filter((c) => c.stage === 'COMPLETED').length;
-  const myStageCount = role ? summaryCredits.filter((c) => c.stage === role).length : 0;
+  const { data: summary, isLoading: isSummaryLoading, isError: isSummaryError } =
+    useDashboardSummary(showStats);
+  const statValue = (value: number | undefined) => (isSummaryError ? '—' : (value ?? 0));
 
   function updateParam(key: string, value: string | undefined) {
     const next = new URLSearchParams(searchParams);
@@ -74,7 +75,9 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
     } else {
       next.set(key, value);
     }
-    next.delete('page');
+    if (key !== 'page') {
+      next.delete('page');
+    }
     setSearchParams(next);
   }
 
@@ -113,10 +116,11 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
       key: 'stageDeadline',
       render: (v: string | null, record) => {
         if (!v || record.stage === 'COMPLETED') return '—';
-        const text = record.danger ? `+${formatOverdueTime(v)}` : formatRemainingTime(v);
+        const overdue = record.danger || new Date(v).getTime() <= now;
+        const text = overdue ? `+${formatOverdueTime(v)}` : formatRemainingTime(v);
         return (
           <Tooltip title={formatDate(v)}>
-            <span style={{ color: record.danger ? colors.danger : colors.textMuted }}>
+            <span style={{ color: overdue ? colors.danger : colors.textMuted }}>
               {text}
             </span>
           </Tooltip>
@@ -176,26 +180,26 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
         <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
           <StatCard
             label="Jami kreditlar"
-            value={totalCount}
+            value={statValue(summary?.total)}
             icon={<FileTextOutlined />}
             loading={isSummaryLoading}
           />
           <StatCard
             label="Mening bosqichimda"
-            value={myStageCount}
+            value={statValue(summary?.ownStage)}
             icon={<ClockCircleOutlined />}
             loading={isSummaryLoading}
           />
           <StatCard
             label="Muddati o'tganlar"
-            value={dangerCount}
+            value={statValue(summary?.overdue)}
             icon={<ExclamationCircleOutlined />}
             loading={isSummaryLoading}
             tone="danger"
           />
           <StatCard
             label="Yakunlangan"
-            value={completedCount}
+            value={statValue(summary?.completed)}
             icon={<CheckCircleOutlined />}
             loading={isSummaryLoading}
           />
@@ -204,14 +208,12 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
 
       <Card styles={{ body: { padding: 20 } }} style={{ borderRadius: 12, marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <Input
-            allowClear
+          <SearchInput
             prefix={<SearchOutlined />}
             placeholder="F.I.Sh, PINFL yoki ariza raqami"
-            defaultValue={filters.q}
+            value={filters.q}
             style={{ width: 260 }}
-            onPressEnter={(e) => updateParam('q', e.currentTarget.value)}
-            onClear={() => updateParam('q', undefined)}
+            onSearch={(value) => updateParam('q', value)}
           />
           <Select
             allowClear
@@ -250,6 +252,9 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
       </Card>
 
       <Card styles={{ body: { padding: 0 } }} style={{ borderRadius: 12 }}>
+        {isError && !data ? (
+          <QueryErrorState bare error={error} onRetry={() => void refetch()} />
+        ) : (
         <Table
           rowKey="id"
           loading={isLoading || isFetching}
@@ -280,6 +285,7 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
             showSizeChanger: false,
           }}
         />
+        )}
       </Card>
     </div>
   );

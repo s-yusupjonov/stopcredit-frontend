@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { creditsApi } from '@/shared/api/endpoints';
+import { queryKeys } from '@/shared/api/queryKeys';
 
-const SUMMARY_PAGE_SIZE = 200;
-
+/** Server tomonidagi aggregate (barcha yozuvlar bo'yicha, rol ko'rish doirasida). */
 export function useDashboardSummary(enabled: boolean) {
   return useQuery({
-    queryKey: ['credits', 'dashboard-summary'],
-    queryFn: () => creditsApi.list({ page: 0, size: SUMMARY_PAGE_SIZE, sort: 'createdAt,desc' }),
+    queryKey: queryKeys.credits.summary,
+    queryFn: () => creditsApi.summary(),
     enabled,
+    refetchInterval: 60_000,
   });
 }

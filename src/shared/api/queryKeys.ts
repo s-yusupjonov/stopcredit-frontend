@@ -5,6 +5,10 @@ export const queryKeys = {
     all: ['credits'] as const,
     list: (filters: CreditsFilters) => ['credits', 'list', filters] as const,
     detail: (id: number) => ['credits', 'detail', id] as const,
+    summary: ['credits', 'summary'] as const,
+  },
+  auth: {
+    me: ['auth', 'me'] as const,
   },
   users: {
     all: ['users'] as const,

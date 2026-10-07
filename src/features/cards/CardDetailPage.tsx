@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, Descriptions, Skeleton, Tag, Typography } from 'antd';
-import { ArrowLeftOutlined, EditOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, EditOutlined, UnlockOutlined } from '@ant-design/icons';
 import { CardStatusTag } from '@/shared/ui/CardStatusTag';
+import { QueryErrorState } from '@/shared/ui/QueryErrorState';
 import {
   formatCardNumber,
   formatDate,
@@ -13,13 +15,19 @@ import { cardBasisLabels, cardRestrictionLabels } from '@/shared/ui/strings';
 import { useAuth } from '@/features/auth/useAuth';
 import { useCard } from './hooks/useCard';
 import { CardDocumentsSection } from './CardDocumentsSection';
+import { UnblockCardModal } from './UnblockCardModal';
 
 export function CardDetailPage() {
   const { id } = useParams<{ id: string }>();
   const cardId = Number(id);
   const navigate = useNavigate();
   const { role } = useAuth();
-  const { data: card, isLoading } = useCard(cardId);
+  const { data: card, isLoading, isError, error, refetch } = useCard(cardId);
+  const [isUnblockOpen, setIsUnblockOpen] = useState(false);
+
+  if (isError && !card) {
+    return <QueryErrorState error={error} onRetry={() => void refetch()} />;
+  }
 
   if (isLoading || !card) {
     return (
@@ -30,6 +38,7 @@ export function CardDetailPage() {
   }
 
   const canManage = role === 'ANTI_FRAUD';
+  const canUnblock = canManage && card.status === 'BLOCKED';
   const listPath = card.status === 'BLOCKED' ? '/cards/blocked' : '/cards/active';
 
   return (
@@ -56,6 +65,11 @@ export function CardDetailPage() {
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(listPath)}>
             Ro'yxatga qaytish
           </Button>
+          {canUnblock && (
+            <Button icon={<UnlockOutlined />} onClick={() => setIsUnblockOpen(true)}>
+              Blokdan ochish
+            </Button>
+          )}
           {canManage && (
             <Button type="primary" icon={<EditOutlined />} onClick={() => navigate(`/cards/${card.id}/edit`)}>
               Tahrirlash
@@ -71,7 +85,7 @@ export function CardDetailPage() {
           <Descriptions.Item label="MFO">{card.mfo ?? '—'}</Descriptions.Item>
           <Descriptions.Item label="Sana">{formatDateShort(card.restrictionDate)}</Descriptions.Item>
           <Descriptions.Item label="Karta balansi">
-            {card.balance === null ? '—' : formatMoney(card.balance)}
+            {typeof card.balance === 'number' ? formatMoney(card.balance) : '—'}
           </Descriptions.Item>
           <Descriptions.Item label="Cheklov turi">
             {card.restrictionType ? cardRestrictionLabels[card.restrictionType] : '—'}
@@ -95,7 +109,23 @@ export function CardDetailPage() {
         </Descriptions>
       </Card>
 
+      {card.unblockedAt && (
+        <Card title="Blokdan ochish" style={{ borderRadius: 12, marginTop: 16 }}>
+          <Descriptions column={2} bordered size="small">
+            <Descriptions.Item label="Buyruq raqami">{card.unblockOrderNumber ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Ochilgan sana">{formatDate(card.unblockedAt)}</Descriptions.Item>
+            <Descriptions.Item label="Ochgan xodim">{card.unblockedBy ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Eslatma">{card.unblockComment ?? '—'}</Descriptions.Item>
+          </Descriptions>
+        </Card>
+      )}
+
       <CardDocumentsSection card={card} canManage={canManage} />
+
+      <UnblockCardModal
+        card={isUnblockOpen ? card : null}
+        onClose={() => setIsUnblockOpen(false)}
+      />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
 import { EditOutlined } from '@ant-design/icons';
 import { StatusTag } from '@/shared/ui/StatusTag';
 import { StageTracker } from '@/shared/ui/StageTracker';
+import { QueryErrorState } from '@/shared/ui/QueryErrorState';
 import { formatMoney, formatDate } from '@/shared/ui/formatters';
 import { typeLabels } from '@/shared/ui/strings';
 import { notifyError } from '@/shared/api/errorHandler';
@@ -36,10 +37,14 @@ export function CreditDetailPage() {
   const creditId = Number(id);
   const navigate = useNavigate();
   const { role } = useAuth();
-  const { data: credit, isLoading } = useCredit(creditId);
+  const { data: credit, isLoading, isError, error, refetch } = useCredit(creditId, { live: true });
   const advanceMutation = useAdvanceCredit(creditId);
   const updateStatusMutation = useUpdateStatus(creditId);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  if (isError && !credit) {
+    return <QueryErrorState error={error} onRetry={() => void refetch()} />;
+  }
 
   if (isLoading || !credit) {
     return (

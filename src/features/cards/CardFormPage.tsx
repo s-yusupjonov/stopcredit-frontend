@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -12,7 +12,6 @@ import {
   Select,
   Typography,
   Upload,
-  message,
   notification,
 } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
@@ -21,8 +20,9 @@ import { cardBasisLabels, cardRestrictionLabels, cardStatusLabels } from '@/shar
 import { MoneyInput } from '@/shared/ui/MoneyInput';
 import { formatCardNumber, formatExecutor } from '@/shared/ui/formatters';
 import { handleFormError, notifyError } from '@/shared/api/errorHandler';
+import { QueryErrorState } from '@/shared/ui/QueryErrorState';
 import { cardsApi } from '@/shared/api/endpoints';
-import { env } from '@/shared/config/env';
+import { isAcceptablePdf } from '@/shared/ui/pdfUpload';
 import type { CardRequest } from '@/shared/api/types';
 import { useCard } from './hooks/useCard';
 import { useCreateCard } from './hooks/useCreateCard';
@@ -37,7 +37,14 @@ export function CardFormPage() {
   const cardId = Number(id);
   const navigate = useNavigate();
 
-  const { data: existing, isLoading: isLoadingCard } = useCard(cardId);
+  const {
+    data: existing,
+    isLoading: isLoadingCard,
+    isError: isLoadError,
+    error: loadError,
+    refetch,
+  } = useCard(cardId);
+  const initializedFor = useRef<number | null>(null);
   const { data: executors = [], isLoading: isLoadingExecutors } = useExecutors();
   const createMutation = useCreateCard();
   const updateMutation = useUpdateCard(cardId);
@@ -67,12 +74,13 @@ export function CardFormPage() {
   });
 
   useEffect(() => {
-    if (isEdit && existing) {
+    if (isEdit && existing && initializedFor.current !== existing.id) {
+      initializedFor.current = existing.id;
       reset({
         cardNumber: existing.cardNumber,
         mfo: existing.mfo ?? '',
         restrictionDate: existing.restrictionDate ?? '',
-        balance: existing.balance,
+        balance: existing.balance ?? null,
         restrictionType: existing.restrictionType,
         basisCategory: existing.basisCategory,
         basisComment: existing.basisComment ?? '',
@@ -90,14 +98,7 @@ export function CardFormPage() {
     accept: 'application/pdf',
     fileList: files,
     beforeUpload: (file) => {
-      if (file.type !== 'application/pdf') {
-        message.error(`${file.name} — faqat PDF fayllar qabul qilinadi`);
-        return Upload.LIST_IGNORE;
-      }
-      if (file.size > env.maxUploadSizeMb * 1024 * 1024) {
-        message.error(`${file.name} — fayl hajmi ${env.maxUploadSizeMb}MB dan oshmasligi kerak`);
-        return Upload.LIST_IGNORE;
-      }
+      if (!isAcceptablePdf(file)) return Upload.LIST_IGNORE;
       setFiles((prev) => [...prev, file]);
       return false;
     },
@@ -146,7 +147,11 @@ export function CardFormPage() {
     }
   };
 
-  if (isEdit && isLoadingCard) {
+  if (isEdit && isLoadError && !existing) {
+    return <QueryErrorState error={loadError} onRetry={() => void refetch()} />;
+  }
+
+  if (isEdit && (isLoadingCard || !existing)) {
     return <Card loading style={{ borderRadius: 12 }} />;
   }
 

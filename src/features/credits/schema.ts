@@ -11,6 +11,7 @@ export const creditSchema = z.object({
   amount: z
     .number({ required_error: 'Majburiy maydon', invalid_type_error: 'Majburiy maydon' })
     .positive('Summa musbat bo\'lishi kerak')
+    .max(90_071_992_547_409.91, 'Summa juda katta')
     .refine((v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6, 'Ko\'pi bilan 2 ta kasr xona'),
   status: z.enum(['ACTIVE', 'STOPPED'], { required_error: 'Majburiy maydon' }),
 });

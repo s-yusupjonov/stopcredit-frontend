@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Button, Card, List, Progress, Typography, Upload, message } from 'antd';
+import { Button, Card, List, Popconfirm, Progress, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { FilePdfOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import type { CreditResponse, CreditStage } from '@/shared/api/types';
 import { formatFileSize, formatDate } from '@/shared/ui/formatters';
 import { stageLabels } from '@/shared/ui/strings';
-import { env } from '@/shared/config/env';
+import { useBatchedPdfUpload } from '@/shared/ui/pdfUpload';
 import { colors } from '@/shared/theme';
 import { useUploadDocuments } from './hooks/useUploadDocuments';
 import { useDeleteDocument } from './hooks/useDeleteDocument';
@@ -34,31 +34,14 @@ export function DocumentsSection({ credit, canManageCurrentStage }: DocumentsSec
     stagesWithDocs.push(credit.stage);
   }
 
+  const beforeUpload = useBatchedPdfUpload((files) => uploadMutation.mutate(files));
+
   const uploadProps: UploadProps = {
     multiple: true,
     accept: 'application/pdf',
     showUploadList: false,
-    beforeUpload: (file) => {
-      if (file.type !== 'application/pdf') {
-        message.error(`${file.name} — faqat PDF fayllar qabul qilinadi`);
-        return Upload.LIST_IGNORE;
-      }
-      const maxBytes = env.maxUploadSizeMb * 1024 * 1024;
-      if (file.size > maxBytes) {
-        message.error(`${file.name} — fayl hajmi ${env.maxUploadSizeMb}MB dan oshmasligi kerak`);
-        return Upload.LIST_IGNORE;
-      }
-      return false;
-    },
-    customRequest: () => {},
-    onChange: (info) => {
-      const files = info.fileList
-        .map((f) => f.originFileObj)
-        .filter((f): f is File => !!f);
-      if (files.length > 0) {
-        uploadMutation.mutate(files);
-      }
-    },
+    disabled: uploadMutation.isPending,
+    beforeUpload,
   };
 
   return (
@@ -86,6 +69,7 @@ export function DocumentsSection({ credit, canManageCurrentStage }: DocumentsSec
                       <Button
                         key="download"
                         type="link"
+                        loading={downloadMutation.isPending && downloadMutation.variables?.docId === doc.id}
                         onClick={() =>
                           downloadMutation.mutate({ docId: doc.id, fileName: doc.fileName })
                         }
@@ -93,17 +77,26 @@ export function DocumentsSection({ credit, canManageCurrentStage }: DocumentsSec
                         Yuklab olish
                       </Button>,
                       isCurrentEditableStage && (
-                        <Button
+                        <Popconfirm
                           key="delete"
-                          type="link"
-                          danger
-                          icon={<DeleteOutlined />}
-                          loading={deleteMutation.isPending && pendingDeleteId === doc.id}
-                          onClick={() => {
+                          title="Hujjatni o'chirasizmi?"
+                          description="Bu amalni ortga qaytarib bo'lmaydi."
+                          okText="O'chirish"
+                          cancelText="Bekor qilish"
+                          okButtonProps={{ danger: true }}
+                          onConfirm={() => {
                             setPendingDeleteId(doc.id);
                             deleteMutation.mutate(doc.id);
                           }}
-                        />
+                        >
+                          <Button
+                            type="link"
+                            danger
+                            icon={<DeleteOutlined />}
+                            aria-label="Hujjatni o'chirish"
+                            loading={deleteMutation.isPending && pendingDeleteId === doc.id}
+                          />
+                        </Popconfirm>
                       ),
                     ].filter(Boolean)}
                   >
