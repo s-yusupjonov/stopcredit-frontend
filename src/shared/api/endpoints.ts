@@ -10,6 +10,7 @@ import type {
   CreditResponse,
   CreditsFilters,
   CreditStatus,
+  CreditSummary,
   DocumentResponse,
   ExecutorRequest,
   ExecutorResponse,
@@ -24,6 +25,7 @@ import type {
 export const authApi = {
   login: (payload: LoginRequest) =>
     api.post<LoginResponse>('/auth/login', payload).then((r) => r.data),
+  me: () => api.get<UserResponse>('/auth/me').then((r) => r.data),
 };
 
 export const usersApi = {
@@ -61,6 +63,7 @@ export const creditsApi = {
         responseType: 'blob',
       })
       .then((r) => r.data as Blob),
+  summary: () => api.get<CreditSummary>('/credits/summary').then((r) => r.data),
   get: (id: number) => api.get<CreditResponse>(`/credits/${id}`).then((r) => r.data),
   create: (payload: CreditRequest) =>
     api.post<CreditResponse>('/credits', payload).then((r) => r.data),

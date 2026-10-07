@@ -4,6 +4,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined } from '@ant-design/icons';
 import type { UserResponse } from '@/shared/api/types';
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { QueryErrorState } from '@/shared/ui/QueryErrorState';
 import { formatDate } from '@/shared/ui/formatters';
 import { roleLabels } from '@/shared/ui/strings';
 import { colors } from '@/shared/theme';
@@ -11,7 +12,7 @@ import { useUsers } from './hooks/useUsers';
 import { UserFormModal } from './UserFormModal';
 
 export function UsersPage() {
-  const { data: users, isLoading } = useUsers();
+  const { data: users, isLoading, isError, error, refetch } = useUsers();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserResponse | null>(null);
 
@@ -86,6 +87,9 @@ export function UsersPage() {
       </div>
 
       <Card style={{ borderRadius: 12 }} styles={{ body: { padding: 0 } }}>
+        {isError ? (
+          <QueryErrorState bare error={error} onRetry={() => void refetch()} />
+        ) : (
         <Table
           rowKey="id"
           loading={isLoading}
@@ -97,6 +101,7 @@ export function UsersPage() {
             style: { background: !record.active ? colors.bg : undefined },
           })}
         />
+        )}
       </Card>
 
       <UserFormModal open={modalOpen} onClose={() => setModalOpen(false)} editingUser={editingUser} />

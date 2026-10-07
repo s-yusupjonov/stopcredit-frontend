@@ -5,7 +5,8 @@ import { Alert, Form, Input, Modal, Select, Switch } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import type { UserResponse } from '@/shared/api/types';
 import { roleLabels } from '@/shared/ui/strings';
-import { handleFormError, notifyError } from '@/shared/api/errorHandler';
+import { getErrorStatus, handleFormError, notifyError } from '@/shared/api/errorHandler';
+import { useAuth } from '@/features/auth/useAuth';
 import { useCreateUser } from './hooks/useCreateUser';
 import { useUpdateUser } from './hooks/useUpdateUser';
 import { useAdLookup } from './hooks/useAdLookup';
@@ -23,6 +24,7 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
   const adLookup = useAdLookup();
+  const { user: currentUser } = useAuth();
   const schema = useMemo(() => buildUserSchema(isCreate), [isCreate]);
   const [adChecked, setAdChecked] = useState<'idle' | 'found' | 'not-found' | 'registered'>('idle');
 
@@ -82,29 +84,58 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
     setAdChecked('idle');
     try {
       const result = await adLookup.mutateAsync(username.trim());
-      if (!result.found) {
-        setAdChecked('not-found');
-        setValue('fullName', '', { shouldValidate: true });
-        return;
-      }
-      if (result.alreadyRegistered) {
+      if (result.registered) {
         setAdChecked('registered');
+        setValue('fullName', '', { shouldValidate: false });
         return;
       }
-      setValue('fullName', result.fullName ?? '', { shouldValidate: true });
+      setValue('username', result.username, { shouldValidate: true });
+      setValue('fullName', result.fullName, { shouldValidate: true });
       setAdChecked('found');
     } catch (error) {
+      if (getErrorStatus(error) === 404) {
+        setAdChecked('not-found');
+        setValue('fullName', '', { shouldValidate: false });
+        return;
+      }
       notifyError(error, "AD'dan qidirishda xatolik yuz berdi");
     }
   }
 
+  function confirmRisky(values: UserFormValues): Promise<boolean> {
+    if (!editingUser || editingUser.role !== 'ADMIN' || !editingUser.active) return Promise.resolve(true);
+    const losesAdmin = values.role !== 'ADMIN' || !values.active;
+    if (!losesAdmin) return Promise.resolve(true);
+    const isSelf = currentUser?.id === editingUser.id;
+    return new Promise((resolve) => {
+      Modal.confirm({
+        title: isSelf
+          ? "O'zingizning administrator huquqingizni olib tashlamoqchimisiz?"
+          : 'Administrator huquqini olib tashlamoqchimisiz?',
+        content: values.active
+          ? "Rol o'zgartiriladi va foydalanuvchi administrator sahifalariga kira olmaydi."
+          : "Foydalanuvchi faolsizlantiriladi va tizimga kira olmaydi."
+            + (isSelf ? ' Siz tizimdan chiqarilishingiz mumkin.' : ''),
+        okText: 'Ha, davom etish',
+        cancelText: 'Bekor qilish',
+        okButtonProps: { danger: true },
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false),
+      });
+    });
+  }
+
   const onSubmit = async (values: UserFormValues) => {
+    if (isAdCreate && adChecked !== 'found') {
+      setError('username', { type: 'manual', message: "Avval loginni AD dan qidirib tekshiring" });
+      return;
+    }
+    if (!(await confirmRisky(values))) return;
     try {
       if (editingUser) {
         await updateMutation.mutateAsync({
           id: editingUser.id,
           payload: {
-            username: values.username,
             fullName: values.fullName,
             role: values.role,
             active: values.active,
@@ -113,7 +144,7 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
         });
       } else {
         await createMutation.mutateAsync({
-          username: values.username,
+          username: values.username.trim(),
           fullName: values.fullName,
           role: values.role,
           authSource: values.authSource,
@@ -184,7 +215,7 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
                   }}
                 />
               ) : (
-                <Input {...field} />
+                <Input {...field} readOnly={!!editingUser} disabled={!!editingUser} />
               )
             }
           />

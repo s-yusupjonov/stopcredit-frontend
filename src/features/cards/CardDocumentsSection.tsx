@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Button, Card, List, Progress, Typography, Upload, message } from 'antd';
+import { Button, Card, List, Popconfirm, Progress, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { FilePdfOutlined, DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import type { CardResponse } from '@/shared/api/types';
 import { formatFileSize, formatDate } from '@/shared/ui/formatters';
-import { env } from '@/shared/config/env';
+import { useBatchedPdfUpload } from '@/shared/ui/pdfUpload';
 import { colors } from '@/shared/theme';
 import { useUploadCardDocuments } from './hooks/useUploadCardDocuments';
 import { useDeleteCardDocument } from './hooks/useDeleteCardDocument';
@@ -22,30 +22,14 @@ export function CardDocumentsSection({ card, canManage }: CardDocumentsSectionPr
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const documents = card.documents ?? [];
 
+  const beforeUpload = useBatchedPdfUpload((files) => uploadMutation.mutate(files));
+
   const uploadProps: UploadProps = {
     multiple: true,
     accept: 'application/pdf',
     showUploadList: false,
-    beforeUpload: (file) => {
-      if (file.type !== 'application/pdf') {
-        message.error(`${file.name} — faqat PDF fayllar qabul qilinadi`);
-        return Upload.LIST_IGNORE;
-      }
-      if (file.size > env.maxUploadSizeMb * 1024 * 1024) {
-        message.error(`${file.name} — fayl hajmi ${env.maxUploadSizeMb}MB dan oshmasligi kerak`);
-        return Upload.LIST_IGNORE;
-      }
-      return false;
-    },
-    customRequest: () => {},
-    onChange: (info) => {
-      const files = info.fileList
-        .map((f) => f.originFileObj)
-        .filter((f): f is NonNullable<typeof f> => !!f);
-      if (files.length > 0) {
-        uploadMutation.mutate(files);
-      }
-    },
+    disabled: uploadMutation.isPending,
+    beforeUpload,
   };
 
   return (
@@ -66,17 +50,26 @@ export function CardDocumentsSection({ card, canManage }: CardDocumentsSectionPr
                   Yuklab olish
                 </Button>,
                 canManage && (
-                  <Button
+                  <Popconfirm
                     key="delete"
-                    type="link"
-                    danger
-                    icon={<DeleteOutlined />}
-                    loading={deleteMutation.isPending && pendingDeleteId === doc.id}
-                    onClick={() => {
+                    title="Hujjatni o'chirasizmi?"
+                    description="Bu amalni ortga qaytarib bo'lmaydi."
+                    okText="O'chirish"
+                    cancelText="Bekor qilish"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={() => {
                       setPendingDeleteId(doc.id);
                       deleteMutation.mutate(doc.id);
                     }}
-                  />
+                  >
+                    <Button
+                      type="link"
+                      danger
+                      icon={<DeleteOutlined />}
+                      aria-label="Hujjatni o'chirish"
+                      loading={deleteMutation.isPending && pendingDeleteId === doc.id}
+                    />
+                  </Popconfirm>
                 ),
               ].filter(Boolean)}
             >

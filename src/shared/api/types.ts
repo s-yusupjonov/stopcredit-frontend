@@ -36,13 +36,19 @@ export interface UserCreateRequest {
 }
 
 export interface AdLookupResponse {
-  found: boolean;
-  fullName: string | null;
-  alreadyRegistered: boolean;
+  username: string;
+  fullName: string;
+  registered: boolean;
+}
+
+export interface CreditSummary {
+  total: number;
+  overdue: number;
+  ownStage: number;
+  completed: number;
 }
 
 export interface UserUpdateRequest {
-  username: string;
   fullName: string;
   role: Role;
   active: boolean;
@@ -159,7 +165,7 @@ export interface CardResponse {
   cardNumber: string;
   mfo: string | null;
   restrictionDate: string | null;
-  balance: number | null;
+  balance?: number | null;
   restrictionType: CardRestrictionType | null;
   basisCategory: CardBasisCategory;
   basisComment: string | null;

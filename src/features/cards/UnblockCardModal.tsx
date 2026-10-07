@@ -1,13 +1,12 @@
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, Input, Modal, Typography, Upload, message, notification } from 'antd';
+import { Form, Input, Modal, Typography, Upload, notification } from 'antd';
 import type { UploadFile } from 'antd';
-import type { RcFile } from 'antd/es/upload';
 import { InboxOutlined } from '@ant-design/icons';
 import type { CardResponse } from '@/shared/api/types';
 import { formatCardNumber, formatFileSize } from '@/shared/ui/formatters';
 import { handleFormError } from '@/shared/api/errorHandler';
-import { env } from '@/shared/config/env';
+import { isAcceptablePdf } from '@/shared/ui/pdfUpload';
 import { colors } from '@/shared/theme';
 import { useUnblockCard } from './hooks/useUnblockCard';
 import { unblockSchema, type UnblockFormValues } from './schema';
@@ -25,18 +24,6 @@ const DEFAULT_VALUES: Partial<UnblockFormValues> = {
 
 function toUploadFile(file: File): UploadFile {
   return { uid: '-1', name: file.name, size: file.size, status: 'done' };
-}
-
-function isAcceptablePdf(file: RcFile): boolean {
-  if (file.type !== 'application/pdf') {
-    message.error(`${file.name} — faqat PDF fayllar qabul qilinadi`);
-    return false;
-  }
-  if (file.size > env.maxUploadSizeMb * 1024 * 1024) {
-    message.error(`${file.name} — fayl hajmi ${env.maxUploadSizeMb}MB dan oshmasligi kerak`);
-    return false;
-  }
-  return true;
 }
 
 export function UnblockCardModal({ card, onClose }: UnblockCardModalProps) {

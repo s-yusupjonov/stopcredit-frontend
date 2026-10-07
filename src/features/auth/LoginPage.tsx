@@ -10,8 +10,8 @@ import { useAuth } from './useAuth';
 import styles from './LoginPage.module.css';
 
 const loginSchema = z.object({
-  username: z.string().min(1, 'Login kiritilishi shart'),
-  password: z.string().min(1, 'Parol kiritilishi shart'),
+  username: z.string().trim().min(1, 'Login kiritilishi shart').max(64, "Login 64 belgidan oshmasligi kerak"),
+  password: z.string().min(1, 'Parol kiritilishi shart').max(128, 'Parol 128 belgidan oshmasligi kerak'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;

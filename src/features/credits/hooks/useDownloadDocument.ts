@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { notifyError } from '@/shared/api/errorHandler';
 import { creditsApi } from '@/shared/api/endpoints';
 
 export function useDownloadDocument(creditId: number) {
@@ -14,5 +15,6 @@ export function useDownloadDocument(creditId: number) {
       anchor.remove();
       URL.revokeObjectURL(url);
     },
+    onError: (error) => notifyError(error, 'Hujjatni yuklab olib bo\'lmadi'),
   });
 }

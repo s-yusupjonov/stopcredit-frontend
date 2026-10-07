@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { notifyError } from '@/shared/api/errorHandler';
 import { cardsApi } from '@/shared/api/endpoints';
 import type { CardsFilters } from '@/shared/api/types';
 
@@ -15,5 +16,6 @@ export function useExportCards(fileLabel: string) {
       anchor.remove();
       URL.revokeObjectURL(url);
     },
+    onError: (error) => notifyError(error, 'Excel faylni yuklab bo\'lmadi'),
   });
 }

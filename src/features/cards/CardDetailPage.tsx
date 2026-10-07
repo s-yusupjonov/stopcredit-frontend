@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Card, Descriptions, Skeleton, Tag, Typography } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, UnlockOutlined } from '@ant-design/icons';
 import { CardStatusTag } from '@/shared/ui/CardStatusTag';
+import { QueryErrorState } from '@/shared/ui/QueryErrorState';
 import {
   formatCardNumber,
   formatDate,
@@ -21,8 +22,12 @@ export function CardDetailPage() {
   const cardId = Number(id);
   const navigate = useNavigate();
   const { role } = useAuth();
-  const { data: card, isLoading } = useCard(cardId);
+  const { data: card, isLoading, isError, error, refetch } = useCard(cardId);
   const [isUnblockOpen, setIsUnblockOpen] = useState(false);
+
+  if (isError && !card) {
+    return <QueryErrorState error={error} onRetry={() => void refetch()} />;
+  }
 
   if (isLoading || !card) {
     return (

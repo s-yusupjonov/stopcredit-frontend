@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 
-export function formatMoney(amount: number): string {
+export function formatMoney(amount: number | null | undefined): string {
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) return '—';
   const parts = amount.toFixed(2).split('.');
   const wholePart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return `${wholePart},${parts[1]} so'm`;

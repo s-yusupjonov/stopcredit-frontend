@@ -8,5 +8,6 @@ export function useCredits(filters: CreditsFilters) {
     queryKey: queryKeys.credits.list(filters),
     queryFn: () => creditsApi.list(filters),
     placeholderData: (prev) => prev,
+    refetchInterval: 60_000,
   });
 }

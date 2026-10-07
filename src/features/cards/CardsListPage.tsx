@@ -19,6 +19,7 @@ import type {
 } from '@/shared/api/types';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { SearchInput } from '@/shared/ui/SearchInput';
+import { QueryErrorState } from '@/shared/ui/QueryErrorState';
 import {
   formatCardNumber,
   formatDate,
@@ -98,7 +99,7 @@ export function CardsListPage({ status }: CardsListPageProps) {
     };
   }, [searchParams, status]);
 
-  const { data, isLoading, isFetching } = useCards(filters);
+  const { data, isLoading, isFetching, isError, error, refetch } = useCards(filters);
 
   const hasFilters = ['q', 'mfo', 'restrictionType', 'basisCategory', 'executorId', 'dateFrom', 'dateTo'].some(
     (key) => searchParams.has(key),
@@ -322,6 +323,9 @@ export function CardsListPage({ status }: CardsListPageProps) {
       </Card>
 
       <Card styles={{ body: { padding: 0 } }} style={{ borderRadius: 12 }}>
+        {isError && !data ? (
+          <QueryErrorState bare error={error} onRetry={() => void refetch()} />
+        ) : (
         <Table
           rowKey="id"
           loading={isLoading || isFetching}
@@ -342,6 +346,7 @@ export function CardsListPage({ status }: CardsListPageProps) {
             showTotal: (total) => `Jami: ${total}`,
           }}
         />
+        )}
       </Card>
 
       <UnblockCardModal card={unblockTarget} onClose={() => setUnblockTarget(null)} />

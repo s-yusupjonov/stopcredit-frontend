@@ -3,7 +3,9 @@ import type { ComponentRef } from 'react';
 import { InputNumber } from 'antd';
 import type { InputNumberProps } from 'antd';
 
-const MAX_AMOUNT = 9_999_999_999_999.99;
+// JavaScript number 2 kasr xona bilan aniq saqlay oladigan eng katta qiymat (MAX_SAFE_INTEGER / 100).
+// Backend 17 xonagacha qabul qiladi, lekin undan katta qiymatlar brauzerda aniqligini yo'qotadi.
+const MAX_AMOUNT = 90_071_992_547_409.91;
 const DECIMAL_PLACES = 2;
 
 interface MoneyInputProps {
