@@ -1,0 +1,39 @@
+stages:
+  - Build
+  - deploy
+
+variables:
+  IMAGE_NAME: "harbour.agro-net.uz/$CI_PROJECT_PATH"
+  IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+  SERVICE: "stopcredit_front"
+
+build:
+  stage: Build
+  only:
+    - prod
+  tags:
+    - dev_backend_shell
+  script:
+    - docker build -t "$IMAGE_NAME:$IMAGE_TAG" .
+    - docker push "$IMAGE_NAME:$IMAGE_TAG"
+
+deploy_image_swarm:
+  stage: deploy
+  variables:
+    GIT_STRATEGY: none
+    GIT_SUBMODULE_STRATEGY: none
+  script: |
+    set -euo pipefail
+
+    PAYLOAD=$(printf '{"service":"%s","image":"%s"}' "$SERVICE" "$IMAGE_NAME:$IMAGE_TAG")
+    SIG="sha256=$(printf '%s' "$PAYLOAD" | openssl dgst -sha256 -hmac "$CONTROL_WEBHOOK_SECRET" | awk '{print $2}')"
+
+    curl -fSs -X POST "$CONTROL_WEBHOOK_URL/deploy" \
+      -H "Content-Type: application/json" \
+      -H "X-Sig: $SIG" \
+      -d "$PAYLOAD"
+  only:
+    - prod
+  tags:
+    - dev_backend_shell
+
