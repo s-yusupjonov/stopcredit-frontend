@@ -3,10 +3,10 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Button, Card, Col, DatePicker, Form, Input, Row, Select, Space, Upload } from 'antd';
+import { AutoComplete, Button, Card, Col, DatePicker, Form, Input, Row, Select, Space, Upload } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
-import { cardBasisLabels, cardRestrictionLabels, cardStatusLabels } from '@/shared/ui/strings';
+import { cardBasisOptions, cardRestrictionLabels, cardStatusLabels } from '@/shared/ui/strings';
 import { MAX_AMOUNT, MoneyInput } from '@/shared/ui/MoneyInput';
 import { FormField } from '@/shared/ui/FormField';
 import { PageHeader } from '@/shared/ui/PageHeader';
@@ -70,6 +70,7 @@ export function CardFormPage() {
       restrictionDate: '',
       balance: null,
       restrictionType: null,
+      basisCategory: '',
       basisComment: '',
       status: 'BLOCKED',
       statusComment: '',
@@ -267,11 +268,11 @@ export function CardFormPage() {
                   name="basisCategory"
                   control={control}
                   render={({ field }) => (
-                    <Select
+                    <AutoComplete
                       {...field}
                       id="basisCategory"
-                      placeholder="Tanlang"
-                      options={toOptions(cardBasisLabels)}
+                      placeholder="Tanlang yoki kiriting"
+                      options={cardBasisOptions}
                     />
                   )}
                 />

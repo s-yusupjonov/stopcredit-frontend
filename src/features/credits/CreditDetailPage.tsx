@@ -143,6 +143,8 @@ export function CreditDetailPage() {
           currentStage={credit.stage}
           deadline={credit.stageDeadline}
           danger={credit.danger}
+          createdAt={credit.createdAt}
+          history={credit.stageHistory ?? null}
         />
       </Card>
 

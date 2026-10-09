@@ -1,5 +1,4 @@
 import type {
-  CardBasisCategory,
   CardDocumentKind,
   CardRestrictionType,
   CardStatus,
@@ -25,7 +24,7 @@ export const statusLabels: Record<CreditStatus, string> = {
 export const typeLabels: Record<CreditType, string> = {
   ONLINE: 'Onlayn',
   CHAKANA: 'Chakana',
-  OPEN: 'Ochiq',
+  OPEN: 'Open',
 };
 
 export const roleLabels: Record<Role, string> = {
@@ -55,11 +54,7 @@ export const cardRestrictionLabels: Record<CardRestrictionType, string> = {
   PARTIAL: 'Qisman',
 };
 
-export const cardBasisLabels: Record<CardBasisCategory, string> = {
-  CENTRAL_BANK: 'Markaziy Bank',
-  INTERNAL_AFFAIRS: 'Ichki Ishlar Vazirligi',
-  OTHER: 'Boshqa',
-};
+export const cardBasisOptions = [{ value: 'Markaziy Bank' }, { value: 'Ichki Ishlar Vazirligi' }];
 
 export const cardDocumentKindLabels: Record<CardDocumentKind, string> = {
   RESTRICTION: 'Cheklov hujjati',

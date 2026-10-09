@@ -2,6 +2,7 @@ import { api } from './axios';
 import type {
   AdLookupResponse,
   CardDocumentResponse,
+  CardImportResponse,
   CardRequest,
   CardResponse,
   CardUnblockPayload,
@@ -126,6 +127,15 @@ export const cardsApi = {
       .then((r) => r.data as Blob),
   get: (id: number) => api.get<CardResponse>(`/cards/${id}`).then((r) => r.data),
   create: (payload: CardRequest) => api.post<CardResponse>('/cards', payload).then((r) => r.data),
+  importBlocked: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api
+      .post<CardImportResponse>('/cards/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data);
+  },
   update: (id: number, payload: CardRequest) =>
     api.put<CardResponse>(`/cards/${id}`, payload).then((r) => r.data),
   unblock: (id: number, payload: CardUnblockPayload) => {

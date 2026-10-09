@@ -12,9 +12,7 @@ export const cardSchema = z.object({
     .nullable()
     .optional(),
   restrictionType: z.enum(['FULL', 'PARTIAL']).nullable().optional(),
-  basisCategory: z.enum(['CENTRAL_BANK', 'INTERNAL_AFFAIRS', 'OTHER'], {
-    required_error: 'Majburiy maydon',
-  }),
+  basisCategory: z.string().trim().min(1, 'Majburiy maydon').max(150, "Ko'pi bilan 150 ta belgi"),
   basisComment: z.string().trim().max(500, "Ko'pi bilan 500 ta belgi").optional().or(z.literal('')),
   status: z.enum(['ACTIVE', 'BLOCKED'], { required_error: 'Majburiy maydon' }),
   statusComment: z.string().trim().max(500, "Ko'pi bilan 500 ta belgi").optional().or(z.literal('')),

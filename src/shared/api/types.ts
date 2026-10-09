@@ -64,6 +64,12 @@ export interface DocumentResponse {
   uploadedAt: string;
 }
 
+export interface StageHistoryEntry {
+  stage: CreditStage;
+  receivedAt: string | null;
+  completedAt: string | null;
+}
+
 export interface CreditResponse {
   id: number;
   firstName: string;
@@ -84,6 +90,7 @@ export interface CreditResponse {
   /** Optimistic-lock version; sent back on update so a stale screen gets 409 instead of overwriting. */
   version: number;
   documents: DocumentResponse[] | null;
+  stageHistory?: StageHistoryEntry[] | null;
 }
 
 export interface CreditRequest {
@@ -109,10 +116,21 @@ export interface Page<T> {
   };
 }
 
+export interface ImportRowError {
+  row: number;
+  column: string;
+  message: string;
+}
+
+export interface CardImportResponse {
+  imported: number;
+}
+
 export interface ProblemDetail {
   status: number;
   detail: string;
   errors?: Record<string, string>;
+  rowErrors?: ImportRowError[];
 }
 
 export interface LoginRequest {
@@ -138,7 +156,6 @@ export interface CreditsFilters {
 
 export type CardStatus = 'ACTIVE' | 'BLOCKED';
 export type CardRestrictionType = 'FULL' | 'PARTIAL';
-export type CardBasisCategory = 'CENTRAL_BANK' | 'INTERNAL_AFFAIRS' | 'OTHER';
 export type CardDocumentKind = 'RESTRICTION' | 'UNBLOCK';
 
 export interface ExecutorResponse {
@@ -170,7 +187,7 @@ export interface CardResponse {
   restrictionDate: string | null;
   balance: number | null;
   restrictionType: CardRestrictionType | null;
-  basisCategory: CardBasisCategory;
+  basisCategory: string;
   basisComment: string | null;
   status: CardStatus;
   statusComment: string | null;
@@ -198,7 +215,7 @@ export interface CardRequest {
   restrictionDate?: string;
   balance?: number;
   restrictionType?: CardRestrictionType;
-  basisCategory: CardBasisCategory;
+  basisCategory: string;
   basisComment?: string;
   status: CardStatus;
   statusComment?: string;
@@ -211,7 +228,7 @@ export interface CardsFilters {
   status?: CardStatus;
   mfo?: string;
   restrictionType?: CardRestrictionType;
-  basisCategory?: CardBasisCategory;
+  basisCategory?: string;
   executorId?: number;
   dateFrom?: string;
   dateTo?: string;

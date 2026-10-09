@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Button, Card, DatePicker, Select, Table, Tag, Tooltip } from 'antd';
+import { Button, Card, DatePicker, Select, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   PlusOutlined,
@@ -11,7 +11,6 @@ import {
   UnlockOutlined,
 } from '@ant-design/icons';
 import type {
-  CardBasisCategory,
   CardResponse,
   CardRestrictionType,
   CardsFilters,
@@ -30,16 +29,16 @@ import {
   formatExecutor,
   formatMoney,
 } from '@/shared/ui/formatters';
-import { cardBasisLabels, cardRestrictionLabels } from '@/shared/ui/strings';
+import { cardRestrictionLabels } from '@/shared/ui/strings';
 import { useAuth } from '@/features/auth/useAuth';
 import { useCards } from './hooks/useCards';
 import { useExecutors } from './hooks/useExecutors';
 import { useExportCards } from './hooks/useExportCards';
+import { ImportCardsButton } from './ImportCardsButton';
 import { UnblockCardModal } from './UnblockCardModal';
 
 const PAGE_SIZE = 10;
 const RESTRICTION_TYPES = Object.keys(cardRestrictionLabels) as CardRestrictionType[];
-const BASIS_CATEGORIES = Object.keys(cardBasisLabels) as CardBasisCategory[];
 const FILTER_KEYS = ['q', 'mfo', 'restrictionType', 'basisCategory', 'executorId', 'dateFrom', 'dateTo'];
 
 interface CardsListPageProps {
@@ -97,7 +96,7 @@ export function CardsListPage({ status }: CardsListPageProps) {
       status,
       mfo: readText(searchParams, 'mfo'),
       restrictionType: readEnum(searchParams, 'restrictionType', RESTRICTION_TYPES),
-      basisCategory: readEnum(searchParams, 'basisCategory', BASIS_CATEGORIES),
+      basisCategory: readText(searchParams, 'basisCategory'),
       executorId: readPositiveInt(searchParams, 'executorId'),
       dateFrom: readIsoDate(searchParams, 'dateFrom'),
       dateTo: readIsoDate(searchParams, 'dateTo'),
@@ -176,7 +175,7 @@ export function CardsListPage({ status }: CardsListPageProps) {
       title: 'Asos',
       dataIndex: 'basisCategory',
       key: 'basisCategory',
-      render: (v: CardBasisCategory) => <Tag>{cardBasisLabels[v]}</Tag>,
+      render: (v: string) => <TruncatedText value={v} />,
     },
     {
       title: 'Buyruq raqami',
@@ -244,6 +243,7 @@ export function CardsListPage({ status }: CardsListPageProps) {
   ];
 
   const canUnblock = role === 'ANTI_FRAUD' && status === 'BLOCKED';
+  const canImport = canUnblock;
   const columns: ColumnsType<CardResponse> = [
     ...baseColumns,
     ...(status === 'ACTIVE' ? unblockInfoColumns : []),
@@ -257,6 +257,7 @@ export function CardsListPage({ status }: CardsListPageProps) {
         subtitle={meta.subtitle}
         actions={
           <>
+            {canImport && <ImportCardsButton />}
             <Button
               icon={<DownloadOutlined />}
               loading={exportMutation.isPending}
@@ -301,14 +302,13 @@ export function CardsListPage({ status }: CardsListPageProps) {
             onChange={(v) => updateParams({ restrictionType: v })}
             options={toOptions(cardRestrictionLabels)}
           />
-          <Select
-            allowClear
+          <SearchInput
             placeholder="Asos"
             aria-label="Asos"
-            style={{ width: 200 }}
             value={filters.basisCategory}
-            onChange={(v) => updateParams({ basisCategory: v })}
-            options={toOptions(cardBasisLabels)}
+            style={{ width: 200 }}
+            maxLength={150}
+            onSearch={(value) => updateParams({ basisCategory: value })}
           />
           <Select
             allowClear

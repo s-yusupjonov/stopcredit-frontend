@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, Skeleton, Tag } from 'antd';
+import { Button, Card, Skeleton } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, UnlockOutlined } from '@ant-design/icons';
 import { CardStatusTag } from '@/shared/ui/CardStatusTag';
 import { QueryErrorState } from '@/shared/ui/QueryErrorState';
@@ -14,7 +14,7 @@ import {
   formatExecutor,
   formatMoney,
 } from '@/shared/ui/formatters';
-import { cardBasisLabels, cardRestrictionLabels } from '@/shared/ui/strings';
+import { cardRestrictionLabels } from '@/shared/ui/strings';
 import { useAuth } from '@/features/auth/useAuth';
 import { useCard } from './hooks/useCard';
 import { CardDocumentsSection } from './CardDocumentsSection';
@@ -98,7 +98,7 @@ export function CardDetailPage() {
               label: 'Cheklov turi',
               value: card.restrictionType && cardRestrictionLabels[card.restrictionType],
             },
-            { label: 'Asos', value: <Tag style={{ margin: 0 }}>{cardBasisLabels[card.basisCategory]}</Tag> },
+            { label: 'Asos', value: card.basisCategory, wrap: true },
             { label: 'Buyruq raqami', value: card.basisComment, wrap: true },
             { label: 'Eslatma', value: card.statusComment, wrap: true },
             { label: 'Ijrochi', value: formatExecutor(card.executor), wrap: true },

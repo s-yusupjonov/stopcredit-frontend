@@ -1,6 +1,6 @@
 import type { UseFormSetError, FieldValues, Path } from 'react-hook-form';
 import { feedback } from '@/shared/ui/feedback';
-import type { ProblemDetail } from './types';
+import type { ImportRowError, ProblemDetail } from './types';
 
 function isProblemDetail(data: unknown): data is ProblemDetail {
   return typeof data === 'object' && data !== null && 'detail' in data;
@@ -11,6 +11,10 @@ export function extractProblemDetail(error: unknown): ProblemDetail | null {
   const data = maybeAxios?.response?.data;
   if (isProblemDetail(data)) return data;
   return null;
+}
+
+export function extractRowErrors(error: unknown): ImportRowError[] {
+  return extractProblemDetail(error)?.rowErrors ?? [];
 }
 
 /** HTTP status (javob kelmagan bo'lsa undefined — tarmoq xatosi). */
