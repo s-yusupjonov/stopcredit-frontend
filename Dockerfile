@@ -4,7 +4,7 @@ WORKDIR /app
 
 # VITE_* qiymatlari build vaqtida bundle ichiga yoziladi (runtime'da o'zgartirib bo'lmaydi).
 # Default '/api' — nginx quyida API_UPSTREAM ga proxy qiladi (same-origin).
-ARG VITE_API_BASE_URL=/stopcredit/api
+ARG VITE_API_BASE_URL=https://api-control.agro-net.uz/stopcredit/api
 ARG VITE_APP_NAME=StopCredit
 ARG VITE_REVIEW_DEADLINE_DAYS=3
 ARG VITE_MAX_UPLOAD_SIZE_MB=20
