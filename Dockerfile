@@ -1,5 +1,5 @@
 # ---- Build stage ----
-FROM node:20-alpine AS build
+FROM harbour.agro-net.uz/library/node:20-alpine AS build
 WORKDIR /app
 
 # VITE_* qiymatlari build vaqtida bundle ichiga yoziladi (runtime'da o'zgartirib bo'lmaydi).
@@ -19,7 +19,7 @@ COPY . .
 RUN npm run build
 
 # ---- Serve stage ----
-FROM nginx:1.27-alpine
+FROM harbour.agro-net.uz/library/nginx:1.27-alpine
 # Backend manzili runtime'da beriladi: docker run -e API_UPSTREAM=http://backend:8080
 ENV API_UPSTREAM=http://backend:8080
 COPY --from=build /app/dist /usr/share/nginx/html
