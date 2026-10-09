@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  base: '/',
   plugins: [react()],
   resolve: {
     alias: {
@@ -15,16 +16,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // libraries change far less often than app code; separate chunks stay cached across releases
+        // all third-party code in ONE chunk: splitting react/antd apart caused
+        // circular chunk imports (react <-> vendor) and "createContext of undefined"
         manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined;
-          if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) {
-            return 'react';
-          }
-          if (/[\\/]node_modules[\\/](antd|@ant-design|rc-[^\\/]+|@rc-component)[\\/]/.test(id)) {
-            return 'antd';
-          }
-          return 'vendor';
+          if (id.includes('node_modules')) return 'vendor';
+          return undefined;
         },
       },
     },
