@@ -52,9 +52,9 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
 
   const authSource = watch('authSource');
   const fullName = watch('fullName');
-  const username = watch('username');
   const isAdCreate = isCreate && authSource === 'AD';
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   useEffect(() => {
     if (open) {
