@@ -206,18 +206,12 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
             control={control}
             render={({ field }) =>
               isAdCreate ? (
-                <Input.Search
+                <Input
                   {...field}
                   id="user-username"
                   autoFocus
-                  placeholder="AD dagi login"
-                  enterButton={<SearchOutlined />}
-                  loading={adLookup.isPending}
-                  onSearch={handleAdSearch}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    setAdChecked('idle');
-                  }}
+                  disabled
+                  placeholder="AD qidiruvdan avtomatik to'ldiriladi"
                 />
               ) : (
                 <Input
@@ -262,20 +256,34 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
           required
           htmlFor="user-fullName"
           error={errors.fullName?.message}
-          extra={isAdCreate ? "AD dan avtomatik to'ldiriladi" : undefined}
+          extra={isAdCreate ? "AD dagi F.I.Sh. bo'yicha qidiruv" : undefined}
         >
           <Controller
             name="fullName"
             control={control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                id="user-fullName"
-                maxLength={150}
-                readOnly={isAdCreate}
-                disabled={isAdCreate && adChecked !== 'found'}
-              />
-            )}
+            render={({ field }) =>
+              isAdCreate ? (
+                <Input.Search
+                  {...field}
+                  id="user-fullName"
+                  autoFocus
+                  placeholder="Masalan: Sanjar yoki Yusupjonov"
+                  enterButton={<SearchOutlined />}
+                  loading={adLookup.isPending}
+                  onSearch={handleAdSearch}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    setAdChecked('idle');
+                  }}
+                />
+              ) : (
+                <Input
+                  {...field}
+                  id="user-fullName"
+                  maxLength={150}
+                />
+              )
+            }
           />
         </FormField>
 
