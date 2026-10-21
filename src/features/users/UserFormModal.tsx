@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Form, Input, Modal, Select, Switch } from 'antd';
 import { FormField } from '@/shared/ui/FormField';
 import { ImplicitSubmit } from '@/shared/ui/ImplicitSubmit';
 import { confirmAction, feedback } from '@/shared/ui/feedback';
-import { SearchOutlined } from '@ant-design/icons';
 import type { UserResponse } from '@/shared/api/types';
 import { roleLabels } from '@/shared/ui/strings';
 import { getErrorStatus, handleFormError, notifyError } from '@/shared/api/errorHandler';
@@ -52,8 +51,10 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
   });
 
   const authSource = watch('authSource');
+  const fullName = watch('fullName');
   const username = watch('username');
   const isAdCreate = isCreate && authSource === 'AD';
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     if (open) {
@@ -80,30 +81,43 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
     }
   }, [open, editingUser, reset]);
 
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  // Live search with debounce
+  useEffect(() => {
+    if (!isAdCreate) return;
 
-  async function handleAdSearch() {
-    if (!username || !username.trim()) return;
-    setAdChecked('idle');
-    try {
-      const result = await adLookup.mutateAsync(username.trim());
-      if (result.registered) {
-        setAdChecked('registered');
-        setValue('fullName', '', { shouldValidate: false });
-        return;
-      }
-      setValue('username', result.username, { shouldValidate: true });
-      setValue('fullName', result.fullName, { shouldValidate: true });
-      setAdChecked('found');
-    } catch (error) {
-      if (getErrorStatus(error) === 404) {
-        setAdChecked('not-found');
-        setValue('fullName', '', { shouldValidate: false });
-        return;
-      }
-      notifyError(error, "AD'dan qidirishda xatolik yuz berdi");
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
-  }
+
+    if (!fullName || !fullName.trim()) {
+      setAdChecked('idle');
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const result = await adLookup.mutateAsync(fullName.trim());
+        if (result.registered) {
+          setAdChecked('registered');
+          return;
+        }
+        setValue('username', result.username, { shouldValidate: true });
+        setAdChecked('found');
+      } catch (error) {
+        if (getErrorStatus(error) === 404) {
+          setAdChecked('not-found');
+          return;
+        }
+        notifyError(error, "AD'dan qidirishda xatolik yuz berdi");
+      }
+    }, 500);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [fullName, isAdCreate, adLookup, setValue]);
 
   function confirmRisky(values: UserFormValues): Promise<boolean> {
     if (!editingUser || editingUser.role !== 'ADMIN' || !editingUser.active) return Promise.resolve(true);
@@ -256,25 +270,19 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
           required
           htmlFor="user-fullName"
           error={errors.fullName?.message}
-          extra={isAdCreate ? "AD dagi F.I.Sh. bo'yicha qidiruv" : undefined}
+          extra={isAdCreate ? "AD dagi F.I.Sh. bo'yicha qidiruv (avtomatik)" : undefined}
         >
           <Controller
             name="fullName"
             control={control}
             render={({ field }) =>
               isAdCreate ? (
-                <Input.Search
+                <Input
                   {...field}
                   id="user-fullName"
                   autoFocus
                   placeholder="Masalan: Sanjar yoki Yusupjonov"
-                  enterButton={<SearchOutlined />}
-                  loading={adLookup.isPending}
-                  onSearch={handleAdSearch}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    setAdChecked('idle');
-                  }}
+                  maxLength={150}
                 />
               ) : (
                 <Input
