@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Form, Input, Modal, Select, Switch } from 'antd';
+import { Alert, Form, Input, Modal, Select, Switch, Spin } from 'antd';
 import { FormField } from '@/shared/ui/FormField';
 import { ImplicitSubmit } from '@/shared/ui/ImplicitSubmit';
 import { confirmAction, feedback } from '@/shared/ui/feedback';
@@ -53,7 +53,6 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
   const authSource = watch('authSource');
   const fullName = watch('fullName');
   const isAdCreate = isCreate && authSource === 'AD';
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   useEffect(() => {
@@ -81,20 +80,14 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
     }
   }, [open, editingUser, reset]);
 
-  // Live search with debounce
+  // Instant search on every character
   useEffect(() => {
-    if (!isAdCreate) return;
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    if (!fullName || !fullName.trim()) {
+    if (!isAdCreate || !fullName?.trim()) {
       setAdChecked('idle');
       return;
     }
 
-    searchTimeoutRef.current = setTimeout(async () => {
+    const search = async () => {
       try {
         const result = await adLookup.mutateAsync(fullName.trim());
         if (result.registered) {
@@ -108,15 +101,11 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
           setAdChecked('not-found');
           return;
         }
-        notifyError(error, "AD'dan qidirishda xatolik yuz berdi");
-      }
-    }, 500);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
+        setAdChecked('idle');
       }
     };
+
+    search();
   }, [fullName, isAdCreate, adLookup, setValue]);
 
   function confirmRisky(values: UserFormValues): Promise<boolean> {
@@ -277,13 +266,21 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
             control={control}
             render={({ field }) =>
               isAdCreate ? (
-                <Input
-                  {...field}
-                  id="user-fullName"
-                  autoFocus
-                  placeholder="Masalan: Sanjar yoki Yusupjonov"
-                  maxLength={150}
-                />
+                <div style={{ position: 'relative' }}>
+                  <Input
+                    {...field}
+                    id="user-fullName"
+                    autoFocus
+                    placeholder="Masalan: Sanjar yoki Yusupjonov"
+                    maxLength={150}
+                  />
+                  {adLookup.isPending && (
+                    <Spin
+                      size="small"
+                      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}
+                    />
+                  )}
+                </div>
               ) : (
                 <Input
                   {...field}
@@ -294,6 +291,43 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
             }
           />
         </FormField>
+
+        {isAdCreate && fullName?.trim() && (
+          <>
+            {adLookup.isPending && (
+              <Alert
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+                message="AD'dan qidirilmoqda..."
+              />
+            )}
+            {!adLookup.isPending && adChecked === 'found' && (
+              <Alert
+                type="success"
+                showIcon
+                style={{ marginBottom: 16 }}
+                message="✓ AD da topildi"
+              />
+            )}
+            {!adLookup.isPending && adChecked === 'not-found' && (
+              <Alert
+                type="error"
+                showIcon
+                style={{ marginBottom: 16 }}
+                message="✗ Bunday F.I.Sh. AD da topilmadi"
+              />
+            )}
+            {!adLookup.isPending && adChecked === 'registered' && (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginBottom: 16 }}
+                message="⚠ Bu login allaqachon ro'yxatdan o'tgan"
+              />
+            )}
+          </>
+        )}
 
         <FormField label="Rol" required htmlFor="user-role" error={errors.role?.message}>
           <Controller
