@@ -7,7 +7,7 @@ import { ImplicitSubmit } from '@/shared/ui/ImplicitSubmit';
 import { confirmAction, feedback } from '@/shared/ui/feedback';
 import type { UserResponse } from '@/shared/api/types';
 import { roleLabels } from '@/shared/ui/strings';
-import { getErrorStatus, handleFormError, notifyError } from '@/shared/api/errorHandler';
+import { getErrorStatus, handleFormError } from '@/shared/api/errorHandler';
 import { useAuth } from '@/features/auth/useAuth';
 import { useCreateUser } from './hooks/useCreateUser';
 import { useUpdateUser } from './hooks/useUpdateUser';
