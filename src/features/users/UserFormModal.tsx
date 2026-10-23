@@ -1,17 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Form, Input, Modal, Select, Switch, Spin } from 'antd';
+import { Form, Input, Modal, Select, Switch, Spin } from 'antd';
 import { FormField } from '@/shared/ui/FormField';
 import { ImplicitSubmit } from '@/shared/ui/ImplicitSubmit';
 import { confirmAction, feedback } from '@/shared/ui/feedback';
+import { useDebouncedValue } from '@/shared/ui/useDebouncedValue';
 import type { UserResponse } from '@/shared/api/types';
 import { roleLabels } from '@/shared/ui/strings';
-import { getErrorStatus, handleFormError } from '@/shared/api/errorHandler';
+import { colors } from '@/shared/theme';
+import { errorMessage, getErrorStatus, handleFormError, isNetworkError } from '@/shared/api/errorHandler';
 import { useAuth } from '@/features/auth/useAuth';
 import { useCreateUser } from './hooks/useCreateUser';
 import { useUpdateUser } from './hooks/useUpdateUser';
-import { useAdLookup } from './hooks/useAdLookup';
+import { AD_SEARCH_MIN_LENGTH, useAdSearch } from './hooks/useAdSearch';
 import { buildUserSchema, type UserFormValues } from './schema';
 import { SourceToggle } from './SourceToggle';
 
@@ -21,14 +23,38 @@ interface UserFormModalProps {
   editingUser: UserResponse | null;
 }
 
+interface AdOption {
+  /** AD login (sAMAccountName). */
+  value: string;
+  /** Full name as stored in AD. */
+  label: string;
+  registered: boolean;
+  disabled: boolean;
+}
+
+interface AdSelectValue {
+  value: string;
+  label: ReactNode;
+}
+
+const AD_SEARCH_DELAY_MS = 400;
+
+const emptyValues: UserFormValues = {
+  authSource: 'LOCAL',
+  username: '',
+  fullName: '',
+  role: 'ANTI_FRAUD',
+  password: '',
+  active: true,
+};
+
 export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps) {
   const isCreate = !editingUser;
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
-  const adLookup = useAdLookup();
   const { user: currentUser } = useAuth();
   const schema = useMemo(() => buildUserSchema(isCreate), [isCreate]);
-  const [adChecked, setAdChecked] = useState<'idle' | 'found' | 'not-found' | 'registered'>('idle');
+  const [searchText, setSearchText] = useState('');
 
   const {
     control,
@@ -36,18 +62,12 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
     reset,
     setValue,
     setError,
+    clearErrors,
     watch,
     formState: { errors },
   } = useForm<UserFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      authSource: 'LOCAL',
-      username: '',
-      fullName: '',
-      role: 'ANTI_FRAUD',
-      password: '',
-      active: true,
-    },
+    defaultValues: emptyValues,
   });
 
   const authSource = watch('authSource');
@@ -55,58 +75,64 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
   const isAdCreate = isCreate && authSource === 'AD';
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
+  // AD search: the text is debounced and the lookup is a query, so a slow answer for older
+  // input can never replace the answer for newer input.
+  const typed = searchText.trim();
+  const debounced = useDebouncedValue(typed, AD_SEARCH_DELAY_MS);
+  const search = useAdSearch(isAdCreate ? debounced : '');
+  const searchActive = isAdCreate && typed.length >= AD_SEARCH_MIN_LENGTH;
+  const searching = searchActive && (typed !== debounced || search.isFetching);
+
+  const adOptions: AdOption[] = useMemo(
+    () =>
+      searchActive && search.data
+        ? search.data.map((found) => ({
+            value: found.username,
+            label: found.fullName,
+            registered: found.registered,
+            disabled: found.registered,
+          }))
+        : [],
+    [searchActive, search.data],
+  );
+
   useEffect(() => {
-    if (open) {
-      setAdChecked('idle');
-      reset(
-        editingUser
-          ? {
-              authSource: editingUser.authSource,
-              username: editingUser.username,
-              fullName: editingUser.fullName,
-              role: editingUser.role,
-              password: '',
-              active: editingUser.active,
-            }
-          : {
-              authSource: 'LOCAL',
-              username: '',
-              fullName: '',
-              role: 'ANTI_FRAUD',
-              password: '',
-              active: true,
-            },
-      );
-    }
+    if (!open) return;
+    setSearchText('');
+    reset(
+      editingUser
+        ? {
+            authSource: editingUser.authSource,
+            username: editingUser.username,
+            fullName: editingUser.fullName,
+            role: editingUser.role,
+            password: '',
+            active: editingUser.active,
+          }
+        : emptyValues,
+    );
   }, [open, editingUser, reset]);
 
-  // Instant search on every character
-  useEffect(() => {
-    if (!isAdCreate || !fullName?.trim()) {
-      setAdChecked('idle');
-      return;
+  function adNotFoundContent(): ReactNode {
+    if (typed.length < AD_SEARCH_MIN_LENGTH) {
+      return `Kamida ${AD_SEARCH_MIN_LENGTH} ta belgi kiriting`;
     }
-
-    const search = async () => {
-      try {
-        const result = await adLookup.mutateAsync(fullName.trim());
-        if (result.registered) {
-          setAdChecked('registered');
-          return;
-        }
-        setValue('username', result.username, { shouldValidate: true });
-        setAdChecked('found');
-      } catch (error) {
-        if (getErrorStatus(error) === 404) {
-          setAdChecked('not-found');
-          return;
-        }
-        setAdChecked('idle');
+    if (searching) {
+      return (
+        <span>
+          <Spin size="small" /> Qidirilmoqda...
+        </span>
+      );
+    }
+    if (search.isError) {
+      const status = getErrorStatus(search.error);
+      if (isNetworkError(search.error) || (status !== undefined && status >= 500)) {
+        return "Active Directory bilan ulanib bo'lmadi. Keyinroq urinib ko'ring yoki administratorga murojaat qiling";
       }
-    };
-
-    search();
-  }, [fullName, isAdCreate, adLookup, setValue]);
+      return errorMessage(search.error, "AD dan qidirishda xatolik yuz berdi");
+    }
+    return 'Hech narsa topilmadi';
+  }
 
   function confirmRisky(values: UserFormValues): Promise<boolean> {
     if (!editingUser || editingUser.role !== 'ADMIN' || !editingUser.active) return Promise.resolve(true);
@@ -127,10 +153,6 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
   }
 
   const onSubmit = async (values: UserFormValues) => {
-    if (isAdCreate && adChecked !== 'found') {
-      setError('username', { type: 'manual', message: "Avval loginni AD dan qidirib tekshiring" });
-      return;
-    }
     if (!(await confirmRisky(values))) return;
     try {
       if (editingUser) {
@@ -160,20 +182,21 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
     }
   };
 
+  const submit = () => void handleSubmit(onSubmit)();
+
   return (
     <Modal
       title={editingUser ? 'Foydalanuvchini tahrirlash' : 'Yangi foydalanuvchi'}
       open={open}
       onCancel={onClose}
-      onOk={() => void handleSubmit(onSubmit)()}
+      onOk={submit}
       confirmLoading={isSubmitting}
       okText="Saqlash"
       cancelText="Bekor qilish"
       destroyOnHidden
     >
-      {/* Enter submits the form, except in the AD search box where it runs the lookup */}
-      <Form layout="vertical" onFinish={isAdCreate ? undefined : () => void handleSubmit(onSubmit)()}>
-        {!isAdCreate && <ImplicitSubmit />}
+      <Form layout="vertical" onFinish={submit}>
+        <ImplicitSubmit />
         {isCreate && (
           <Form.Item label="Baza">
             <Controller
@@ -184,12 +207,12 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
                   value={field.value}
                   onChange={(next) => {
                     field.onChange(next);
-                    setAdChecked('idle');
-                    if (next === 'AD') {
-                      setValue('password', '');
-                    } else {
-                      setValue('fullName', '');
-                    }
+                    // The same fields mean different things in each mode, so start clean.
+                    setValue('username', '');
+                    setValue('fullName', '');
+                    setValue('password', '');
+                    setSearchText('');
+                    clearErrors();
                   }}
                 />
               )}
@@ -197,135 +220,91 @@ export function UserFormModal({ open, onClose, editingUser }: UserFormModalProps
           </Form.Item>
         )}
 
-        <FormField
-          label="Login"
-          required
-          htmlFor="user-username"
-          error={errors.username?.message}
-          extra={editingUser ? "Loginni o'zgartirib bo'lmaydi" : undefined}
-        >
-          <Controller
-            name="username"
-            control={control}
-            render={({ field }) =>
-              isAdCreate ? (
-                <Input
-                  {...field}
-                  id="user-username"
-                  autoFocus
-                  disabled
-                  placeholder="AD qidiruvdan avtomatik to'ldiriladi"
-                />
-              ) : (
-                <Input
-                  {...field}
-                  id="user-username"
-                  autoFocus={!editingUser}
-                  autoComplete="off"
-                  disabled={!!editingUser}
-                />
-              )
+        {isAdCreate ? (
+          <FormField
+            label="AD foydalanuvchi"
+            required
+            htmlFor="user-username"
+            error={
+              errors.username?.type === 'server'
+                ? errors.username.message
+                : errors.username || errors.fullName
+                  ? 'AD dan foydalanuvchini tanlang'
+                  : undefined
             }
-          />
-        </FormField>
-
-        {isAdCreate && adChecked === 'found' && (
-          <Alert
-            type="success"
-            showIcon
-            style={{ marginBottom: 16 }}
-            message="AD da topildi, F.I.Sh. avtomatik to'ldirildi"
-          />
-        )}
-        {isAdCreate && adChecked === 'not-found' && (
-          <Alert
-            type="error"
-            showIcon
-            style={{ marginBottom: 16 }}
-            message="Bunday login AD (Active Directory) da topilmadi"
-          />
-        )}
-        {isAdCreate && adChecked === 'registered' && (
-          <Alert
-            type="warning"
-            showIcon
-            style={{ marginBottom: 16 }}
-            message="Bu login allaqachon ro'yxatdan o'tgan"
-          />
-        )}
-
-        <FormField
-          label="F.I.Sh."
-          required
-          htmlFor="user-fullName"
-          error={errors.fullName?.message}
-          extra={isAdCreate ? "AD dagi F.I.Sh. bo'yicha qidiruv (avtomatik)" : undefined}
-        >
-          <Controller
-            name="fullName"
-            control={control}
-            render={({ field }) =>
-              isAdCreate ? (
-                <div style={{ position: 'relative' }}>
+          >
+            <Controller
+              name="username"
+              control={control}
+              render={({ field }) => (
+                <Select<AdSelectValue, AdOption>
+                  id="user-username"
+                  labelInValue
+                  showSearch
+                  allowClear
+                  autoFocus
+                  filterOption={false}
+                  style={{ width: '100%' }}
+                  placeholder="To'liq ism bo'yicha izlash..."
+                  value={
+                    field.value
+                      ? { value: field.value, label: fullName || field.value }
+                      : undefined
+                  }
+                  options={adOptions}
+                  loading={searching}
+                  notFoundContent={adNotFoundContent()}
+                  onSearch={setSearchText}
+                  onChange={(next) => {
+                    const picked = next ? adOptions.find((o) => o.value === next.value) : undefined;
+                    setValue('username', picked?.value ?? '', { shouldValidate: true });
+                    setValue('fullName', picked?.label ?? '', { shouldValidate: true });
+                  }}
+                  optionRender={(option) => (
+                    <div style={{ lineHeight: 1.3, padding: '2px 0' }}>
+                      <div>{option.data.label}</div>
+                      <div style={{ fontSize: 12, color: colors.textMuted }}>
+                        @{option.data.value}
+                        {option.data.registered ? " · allaqachon ro'yxatdan o'tgan" : ''}
+                      </div>
+                    </div>
+                  )}
+                />
+              )}
+            />
+          </FormField>
+        ) : (
+          <>
+            <FormField
+              label="Login"
+              required
+              htmlFor="user-username"
+              error={errors.username?.message}
+              extra={editingUser ? "Loginni o'zgartirib bo'lmaydi" : undefined}
+            >
+              <Controller
+                name="username"
+                control={control}
+                render={({ field }) => (
                   <Input
                     {...field}
-                    id="user-fullName"
-                    autoFocus
-                    placeholder="Masalan: Sanjar yoki Yusupjonov"
-                    maxLength={150}
+                    id="user-username"
+                    autoFocus={!editingUser}
+                    autoComplete="off"
+                    maxLength={64}
+                    disabled={!!editingUser}
                   />
-                  {adLookup.isPending && (
-                    <Spin
-                      size="small"
-                      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}
-                    />
-                  )}
-                </div>
-              ) : (
-                <Input
-                  {...field}
-                  id="user-fullName"
-                  maxLength={150}
-                />
-              )
-            }
-          />
-        </FormField>
+                )}
+              />
+            </FormField>
 
-        {isAdCreate && fullName?.trim() && (
-          <>
-            {adLookup.isPending && (
-              <Alert
-                type="info"
-                showIcon
-                style={{ marginBottom: 16 }}
-                message="AD'dan qidirilmoqda..."
+            <FormField label="F.I.Sh." required htmlFor="user-fullName" error={errors.fullName?.message}>
+              <Controller
+                name="fullName"
+                control={control}
+                render={({ field }) => <Input {...field} id="user-fullName" maxLength={150} />}
               />
-            )}
-            {!adLookup.isPending && adChecked === 'found' && (
-              <Alert
-                type="success"
-                showIcon
-                style={{ marginBottom: 16 }}
-                message="✓ AD da topildi"
-              />
-            )}
-            {!adLookup.isPending && adChecked === 'not-found' && (
-              <Alert
-                type="error"
-                showIcon
-                style={{ marginBottom: 16 }}
-                message="✗ Bunday F.I.Sh. AD da topilmadi"
-              />
-            )}
-            {!adLookup.isPending && adChecked === 'registered' && (
-              <Alert
-                type="warning"
-                showIcon
-                style={{ marginBottom: 16 }}
-                message="⚠ Bu login allaqachon ro'yxatdan o'tgan"
-              />
-            )}
+            </FormField>
           </>
         )}
 
