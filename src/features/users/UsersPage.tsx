@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Button, Card, Input, Segmented, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { PlusOutlined, EditOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { Role, UserResponse } from '@/shared/api/types';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { QueryErrorState } from '@/shared/ui/QueryErrorState';
@@ -9,7 +9,10 @@ import { PageHeader } from '@/shared/ui/PageHeader';
 import { formatDate } from '@/shared/ui/formatters';
 import { roleLabels } from '@/shared/ui/strings';
 import { colors } from '@/shared/theme';
+import { confirmAction, feedback } from '@/shared/ui/feedback';
+import { useAuth } from '@/features/auth/useAuth';
 import { useUsers } from './hooks/useUsers';
+import { useDeleteUser } from './hooks/useDeleteUser';
 import { UserFormModal } from './UserFormModal';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -20,6 +23,9 @@ export function UsersPage() {
   const [editingUser, setEditingUser] = useState<UserResponse | null>(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const { user: currentUser } = useAuth();
+  const deleteMutation = useDeleteUser();
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
   const visibleUsers = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -44,6 +50,21 @@ export function UsersPage() {
   function openEdit(user: UserResponse) {
     setEditingUser(user);
     setModalOpen(true);
+  }
+
+  async function handleDelete(user: UserResponse) {
+    const confirmed = await confirmAction({
+      title: "Foydalanuvchini o'chirasizmi?",
+      content: `${user.fullName} (${user.username}) butunlay o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi.`,
+      okText: "O'chirish",
+      danger: true,
+    });
+    if (!confirmed) return;
+    setPendingDeleteId(user.id);
+    deleteMutation.mutate(user.id, {
+      onSuccess: () => feedback.message.success("Foydalanuvchi o'chirildi"),
+      onSettled: () => setPendingDeleteId(null),
+    });
   }
 
   const columns: ColumnsType<UserResponse> = [
@@ -89,17 +110,33 @@ export function UsersPage() {
     {
       title: 'Amal',
       key: 'actions',
-      width: 70,
-      render: (_, record) => (
-        <Tooltip title="Tahrirlash">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            aria-label={`${record.username} foydalanuvchisini tahrirlash`}
-            onClick={() => openEdit(record)}
-          />
-        </Tooltip>
-      ),
+      width: 110,
+      render: (_, record) => {
+        const isSelf = record.id === currentUser?.id;
+        return (
+          <div style={{ display: 'flex', gap: 4 }}>
+            <Tooltip title="Tahrirlash">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                aria-label={`${record.username} foydalanuvchisini tahrirlash`}
+                onClick={() => openEdit(record)}
+              />
+            </Tooltip>
+            <Tooltip title={isSelf ? "O'zingizni o'chira olmaysiz" : "O'chirish"}>
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                aria-label={`${record.username} foydalanuvchisini o'chirish`}
+                disabled={isSelf}
+                loading={deleteMutation.isPending && pendingDeleteId === record.id}
+                onClick={() => void handleDelete(record)}
+              />
+            </Tooltip>
+          </div>
+        );
+      },
     },
   ];
 
