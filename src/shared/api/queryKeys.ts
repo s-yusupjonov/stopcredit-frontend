@@ -12,6 +12,7 @@ export const queryKeys = {
   },
   users: {
     all: ['users'] as const,
+    adSearch: (q: string) => ['users', 'ad-search', q] as const,
   },
   cards: {
     all: ['cards'] as const,

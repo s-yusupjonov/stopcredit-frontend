@@ -35,8 +35,8 @@ export const usersApi = {
     api.post<UserResponse>('/users', payload).then((r) => r.data),
   update: (id: number, payload: UserUpdateRequest) =>
     api.put<UserResponse>(`/users/${id}`, payload).then((r) => r.data),
-  adLookup: (username: string) =>
-    api.get<AdLookupResponse>('/users/ad-lookup', { params: { username } }).then((r) => r.data),
+  adSearch: (q: string) =>
+    api.get<AdLookupResponse[]>('/users/ad-search', { params: { q } }).then((r) => r.data),
 };
 
 function buildCreditsParams(filters: CreditsFilters) {
