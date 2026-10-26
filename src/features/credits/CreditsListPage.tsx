@@ -11,6 +11,7 @@ import {
   ExclamationCircleOutlined,
   CheckCircleOutlined,
   ClearOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import type {
   CreditResponse,
@@ -26,6 +27,7 @@ import { SearchInput } from '@/shared/ui/SearchInput';
 import { QueryErrorState } from '@/shared/ui/QueryErrorState';
 import { PageHeader } from '@/shared/ui/PageHeader';
 import { useNow } from '@/shared/ui/useNow';
+import { isCriticallyOverdue, isOverdue } from '@/shared/ui/overdue';
 import { readEnum, readPage, readText } from '@/shared/ui/searchParams';
 import { formatMoney, formatDate, formatRemainingTime, formatOverdueTime } from '@/shared/ui/formatters';
 import { stageLabels, stageOrder, statusLabels, typeLabels } from '@/shared/ui/strings';
@@ -35,6 +37,7 @@ import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
 import { StatCard } from '@/features/dashboard/StatCard';
 import { useCredits } from './hooks/useCredits';
 import { useExportCredits } from './hooks/useExportCredits';
+import { CreditStageDetails } from './CreditStageDetails';
 
 const PAGE_SIZE = 10;
 const STATUSES = Object.keys(statusLabels) as CreditStatus[];
@@ -112,11 +115,23 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
       title: 'Ariza raqami',
       dataIndex: 'applicationNumber',
       key: 'applicationNumber',
-      render: (v: string, record) => (
-        <Link to={`/credits/${record.id}`} onClick={(event) => event.stopPropagation()}>
-          {v}
-        </Link>
-      ),
+      render: (v: string, record) => {
+        const critical = isCriticallyOverdue(record.stage, record.stageDeadline, now);
+        const link = (
+          <Link
+            to={`/credits/${record.id}`}
+            onClick={(event) => event.stopPropagation()}
+            style={critical ? { color: colors.danger, fontWeight: 600 } : undefined}
+          >
+            {v}
+          </Link>
+        );
+        return critical ? (
+          <Tooltip title={`Muddati o'tganiga ${formatOverdueTime(record.stageDeadline)} bo'ldi`}>{link}</Tooltip>
+        ) : (
+          link
+        );
+      },
     },
     {
       title: 'F.I.Sh.',
@@ -152,7 +167,7 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
       key: 'stageDeadline',
       render: (v: string | null, record) => {
         if (!v || record.stage === 'COMPLETED') return '—';
-        const overdue = record.danger || new Date(v).getTime() <= now;
+        const overdue = isOverdue(record.stage, v, record.danger, now);
         const text = overdue ? `+${formatOverdueTime(v)}` : formatRemainingTime(v);
         return (
           <Tooltip title={formatDate(v)}>
@@ -300,6 +315,30 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
             columns={columns}
             dataSource={data?.content ?? []}
             scroll={{ x: 'max-content' }}
+            expandable={{
+              fixed: 'left',
+              columnWidth: 56,
+              expandedRowRender: (record) => <CreditStageDetails id={record.id} />,
+              expandIcon: ({ expanded, onExpand, record }) => (
+                <Tooltip title={expanded ? 'Yopish' : 'Batafsil'}>
+                  <Button
+                    type="text"
+                    shape="circle"
+                    aria-label={expanded ? 'Bosqichlarni yopish' : 'Bosqichlarni ko\'rish'}
+                    aria-expanded={expanded}
+                    icon={
+                      <RightOutlined
+                        style={{ transition: 'transform 0.2s', transform: expanded ? 'rotate(90deg)' : undefined }}
+                      />
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onExpand(record, event);
+                    }}
+                  />
+                </Tooltip>
+              ),
+            }}
             onRow={(record) => ({
               onClick: () => navigate(`/credits/${record.id}`),
               style: {

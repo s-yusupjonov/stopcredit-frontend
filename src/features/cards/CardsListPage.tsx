@@ -257,7 +257,6 @@ export function CardsListPage({ status }: CardsListPageProps) {
         subtitle={meta.subtitle}
         actions={
           <>
-            {canImport && <ImportCardsButton />}
             <Button
               icon={<DownloadOutlined />}
               loading={exportMutation.isPending}
@@ -266,6 +265,7 @@ export function CardsListPage({ status }: CardsListPageProps) {
             >
               Excel
             </Button>
+            {canImport && <ImportCardsButton />}
             {role === 'ANTI_FRAUD' && (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/cards/new')}>
                 Yangi karta
