@@ -197,7 +197,7 @@ export function CreditFormPage() {
             </Col>
             <Col xs={24} md={8}>
               <FormField
-                label="Ariza raqami"
+                label="Anketa raqami"
                 required
                 htmlFor="applicationNumber"
                 error={errors.applicationNumber?.message}

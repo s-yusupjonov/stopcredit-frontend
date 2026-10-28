@@ -158,7 +158,7 @@ export function CreditDetailPage() {
             { label: 'PINFL', value: credit.pinfl },
             { label: 'Kredit turi', value: typeLabels[credit.type] },
             { label: 'MFO', value: credit.mfo },
-            { label: 'Ariza raqami', value: credit.applicationNumber },
+            { label: 'Anketa raqami', value: credit.applicationNumber },
             { label: 'Summa', value: formatMoney(credit.amount), strong: true },
             { label: 'Yaratdi', value: credit.createdBy },
             { label: 'Bosqich', value: stageLabels[credit.stage] },

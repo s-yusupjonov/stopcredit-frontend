@@ -112,7 +112,7 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
 
   const columns: ColumnsType<CreditResponse> = [
     {
-      title: 'Ariza raqami',
+      title: 'Anketa raqami',
       dataIndex: 'applicationNumber',
       key: 'applicationNumber',
       render: (v: string, record) => {
@@ -254,8 +254,8 @@ export function CreditsListPage({ scope }: CreditsListPageProps) {
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <SearchInput
             prefix={<SearchOutlined />}
-            placeholder="F.I.Sh, PINFL yoki ariza raqami"
-            aria-label="Qidirish: F.I.Sh, PINFL yoki ariza raqami"
+            placeholder="F.I.Sh, PINFL yoki anketa raqami"
+            aria-label="Qidirish: F.I.Sh, PINFL yoki anketa raqami"
             value={filters.q}
             style={{ width: 280, maxWidth: '100%' }}
             onSearch={(value) => updateParam('q', value)}
